@@ -1,0 +1,91 @@
+============================================================
+  BAKESALE POS — ELECTRON CONVERSION
+  Simple Installation Guide
+============================================================
+
+STEP 1 — COPY FILES INTO YOUR BAKESALE PROJECT FOLDER
+------------------------------------------------------
+
+Your current Bakesale folder looks like this:
+  Bakesale/
+  ├── backend/
+  └── frontend/
+
+After copying, it should look like this:
+  Bakesale/
+  ├── backend/               (unchanged)
+  ├── frontend/              (unchanged)
+  ├── electron/              ← NEW FOLDER (copy from this package)
+  │   ├── main.js
+  │   ├── preload.js
+  │   └── assets/
+  ├── package.json           ← NEW FILE (copy from this package)
+  ├── INSTALL.bat            ← NEW FILE (copy from this package)
+  ├── START.bat              ← NEW FILE (copy from this package)
+  ├── START-DEV.bat          ← NEW FILE (copy from this package)
+  └── BUILD-INSTALLER.bat    ← NEW FILE (copy from this package)
+
+Also replace these existing files:
+  backend/bakesale/settings.py
+    → replace with: backend-src-changes/settings.py
+
+  frontend/src/App.js
+    → replace with: frontend-src-changes/src/App.js
+
+  frontend/src/services/api.js
+    → replace with: frontend-src-changes/src/services/api.js
+
+Also ADD these new files:
+  frontend/src/components/ElectronSetup.js
+    → copy from: frontend-src-changes/src/components/ElectronSetup.js
+
+  frontend/src/hooks/usePrinter.js
+    → copy from: frontend-src-changes/src/hooks/usePrinter.js
+    (create a new folder called "hooks" inside frontend/src/)
+
+
+STEP 2 — RUN INSTALL.bat
+--------------------------
+Double-click INSTALL.bat.
+It will ask for your PostgreSQL password, then do everything else.
+Takes about 3-5 minutes.
+
+
+STEP 3 — THE APP OPENS AUTOMATICALLY
+---------------------------------------
+After install, the app opens. Log in with:
+  Username: admin
+  Password: admin123
+
+
+EVERY DAY AFTER THAT
+---------------------
+Just double-click START.bat to open the app.
+
+
+TO BUILD A REAL .EXE INSTALLER
+--------------------------------
+Once everything is working, double-click BUILD-INSTALLER.bat.
+It will create:  dist\Bakesale POS Setup 1.0.0.exe
+That .exe can be installed on any PC like normal Windows software.
+
+
+PRINTING SETUP
+---------------
+When the app opens for the first time, a setup screen appears.
+- Choose "Main Server" (since this is a single PC setup)
+- Pick your receipt printer from the dropdown
+- Click Save
+
+Bill printing = automatic, no dialog (goes to the printer you picked)
+Barcode printing = always shows printer selection dialog  
+Report printing = always shows printer selection dialog
+
+
+FOR DEVELOPERS — MAKING CHANGES TO THE CODE
+---------------------------------------------
+Double-click START-DEV.bat instead of START.bat.
+Any changes you make to .py or .js files will update the app instantly.
+No need to reinstall anything.
+
+============================================================

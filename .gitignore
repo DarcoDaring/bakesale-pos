@@ -1,0 +1,100 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Bakesale POS — .gitignore
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Python / Django ───────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+*.egg
+.coverage
+htmlcov/
+pytest_cache/
+
+# Virtual environment — never commit this (300MB+)
+backend/venv/
+backend/ENV/
+backend/env/
+backend/.venv/
+
+# Django secrets and local config — NEVER commit
+backend/.env
+backend/*.env
+backend/bakesale/bakesale/local_settings.py
+
+# Django generated files
+backend/bakesale/db.sqlite3
+backend/bakesale/staticfiles/
+backend/bakesale/media/
+backend/bakesale/*.log
+backend/bakesale.log
+
+# Django compiled migrations cache
+backend/api/migrations/__pycache__/
+backend/api/__pycache__/
+backend/api/management/__pycache__/
+backend/api/management/commands/__pycache__/
+backend/bakesale/__pycache__/
+backend/bakesale/bakesale/__pycache__/
+
+# ── Node / React / Electron ───────────────────────────────────────────────────
+# node_modules — never commit (100MB+)
+node_modules/
+frontend/node_modules/
+
+# React build output — generated, not source
+frontend/build/
+
+# Electron build output
+dist/
+out/
+
+# npm/yarn lock files — optional, but keep package-lock.json
+# package-lock.json  ← keep this, it ensures reproducible installs
+yarn.lock
+
+# Electron cache
+.webpack/
+.parcel-cache/
+
+# ── Environment files ─────────────────────────────────────────────────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.production.local
+
+# ── OS junk ───────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ── IDE / Editor ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+coverage/
+.nyc_output/

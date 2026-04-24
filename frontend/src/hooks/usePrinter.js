@@ -1,0 +1,162 @@
+/**
+ * usePrinter.js — React hook for Electron printing
+ *
+ * Usage:
+ *   const { printBill, printBarcode, printReport, openPrinterSettings } = usePrinter();
+ *
+ * - printBill(html)      → Silent print to saved default printer (no dialog)
+ * - printBarcode(html)   → Always shows printer selection dialog
+ * - printReport(html)    → Always shows printer selection dialog
+ * - openPrinterSettings  → Opens the printer picker to change default
+ */
+import { useState, useCallback } from 'react';
+import toast from 'react-hot-toast';
+
+export function usePrinter() {
+  const isElectron = window.electronAPI?.isElectron;
+  const [showPrinterPicker, setShowPrinterPicker] = useState(false);
+  const [printers, setPrinters] = useState([]);
+  const [pendingPrint, setPendingPrint] = useState(null); // { html, options }
+
+  // ── Bill Printing: Silent to default printer ──────────────────────────────
+  const printBill = useCallback(async (html) => {
+    if (!isElectron) {
+      // Browser fallback
+      const w = window.open('', '_blank');
+      w.document.write(html);
+      w.document.close();
+      w.print();
+      w.close();
+      return;
+    }
+
+    try {
+      const printerName = await window.electronAPI.loadDefaultPrinter();
+      if (!printerName) {
+        toast.error('No default printer set. Please configure printer in Settings.');
+        return;
+      }
+      await window.electronAPI.silentPrint(html, printerName, {
+        pageSize: { width: 72000, height: 297000 }, // 72mm thermal roll
+      });
+      toast.success('Bill printed!');
+    } catch (e) {
+      toast.error('Print failed: ' + e.message);
+    }
+  }, [isElectron]);
+
+  // ── Barcode Printing: Always show dialog ──────────────────────────────────
+  const printBarcode = useCallback(async (html) => {
+    if (!isElectron) {
+      const w = window.open('', '_blank');
+      w.document.write(html);
+      w.document.close();
+      w.print();
+      w.close();
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.printWithDialog(html, {
+        pageSize: 'A4',
+        printBackground: true,
+      });
+      if (result.success) toast.success('Barcode printed!');
+    } catch (e) {
+      toast.error('Barcode print failed: ' + e.message);
+    }
+  }, [isElectron]);
+
+  // ── Report Printing: Always show dialog ───────────────────────────────────
+  const printReport = useCallback(async (html) => {
+    if (!isElectron) {
+      const w = window.open('', '_blank');
+      w.document.write(html);
+      w.document.close();
+      w.print();
+      w.close();
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI.printWithDialog(html, {
+        pageSize: 'A4',
+        printBackground: true,
+        landscape: false,
+      });
+      if (result.success) toast.success('Report printed!');
+    } catch (e) {
+      toast.error('Report print failed: ' + e.message);
+    }
+  }, [isElectron]);
+
+  // ── Change Default Printer ────────────────────────────────────────────────
+  const openPrinterSettings = useCallback(async () => {
+    if (!isElectron) return;
+    const available = await window.electronAPI.getPrinters();
+    setPrinters(available);
+    setShowPrinterPicker(true);
+  }, [isElectron]);
+
+  const selectDefaultPrinter = useCallback(async (name) => {
+    await window.electronAPI.saveDefaultPrinter(name);
+    setShowPrinterPicker(false);
+    toast.success(`Default printer set to: ${name}`);
+  }, []);
+
+  return {
+    printBill,
+    printBarcode,
+    printReport,
+    openPrinterSettings,
+    // For rendering the picker UI
+    showPrinterPicker,
+    setShowPrinterPicker,
+    printers,
+    selectDefaultPrinter,
+  };
+}
+
+
+/**
+ * PrinterPickerModal — Drop-in modal to pick a default printer
+ * Render this anywhere and control via `showPrinterPicker` from usePrinter()
+ */
+export function PrinterPickerModal({ printers, onSelect, onClose }) {
+  return (
+    <div style={overlayStyle} onClick={onClose}>
+      <div style={modalStyle} onClick={e => e.stopPropagation()}>
+        <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>
+          🖨️ Select Default Bill Printer
+        </div>
+        {printers.length === 0 && (
+          <div style={{ color: '#94a3b8' }}>No printers found.</div>
+        )}
+        {printers.map(p => (
+          <button key={p.name} style={printerBtnStyle} onClick={() => onSelect(p.name)}>
+            {p.name} {p.isDefault ? '⭐' : ''}
+          </button>
+        ))}
+        <button style={cancelBtnStyle} onClick={onClose}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+const overlayStyle = {
+  position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9000,
+};
+const modalStyle = {
+  background: '#1e293b', borderRadius: 12, padding: 24, minWidth: 320,
+  border: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: 8,
+};
+const printerBtnStyle = {
+  padding: '10px 16px', borderRadius: 8, border: '1px solid #334155',
+  background: '#0f172a', color: '#e2e8f0', cursor: 'pointer', textAlign: 'left',
+  fontSize: 14,
+};
+const cancelBtnStyle = {
+  padding: '10px 16px', borderRadius: 8, border: 'none',
+  background: '#374151', color: '#9ca3af', cursor: 'pointer', marginTop: 8,
+};
