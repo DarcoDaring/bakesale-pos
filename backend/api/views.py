@@ -764,7 +764,7 @@ class BackupView(APIView):
         }
         from django.http import JsonResponse
         response = JsonResponse(data)
-        filename = f"bakesale_backup_{timezone.now().strftime('%Y%m%d_%H%M%S')}.json"
+        filename = f"bakesale_backup_{timezone.now().strftime('%d-%m-%y_%I-%M%p')}.json"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 
@@ -774,7 +774,11 @@ class BackupView(APIView):
             return Response({'detail': 'Admin only'}, status=403)
         try:
             if request.FILES.get('file'):
-                raw = request.FILES['file'].read()
+                upload = request.FILES['file']
+                # Limit backup file to 50MB
+                if upload.size > 50 * 1024 * 1024:
+                    return Response({'detail': 'Backup file too large (max 50MB)'}, status=400)
+                raw = upload.read()
                 data = json.loads(raw)
             else:
                 data = request.data
@@ -891,6 +895,7 @@ class BackupView(APIView):
                     InternalSale.objects.create(
                         id=r['id'], product_id=r['product_id'],
                         destination_id=r['destination_id'],
+                        bill_id=r.get('bill_id'),
                         quantity=d(r['quantity']),
                         price=d(r['price']),
                         created_by_id=None,
@@ -993,6 +998,36 @@ class BackupView(APIView):
                         reason=r.get('reason', ''),
                         requested_by_id=None,
                         reviewed_by_id=None,
+                    )
+
+            # Reset PostgreSQL sequences so new records don't conflict
+            from django.db import connection
+            tables_with_sequences = [
+                ('api_vendor',              'id'),
+                ('api_product',             'id'),
+                ('api_stockbatch',          'id'),
+                ('api_purchasebill',        'id'),
+                ('api_purchase',            'id'),
+                ('api_salebill',            'id'),
+                ('api_saleitem',            'id'),
+                ('api_returnitem',          'id'),
+                ('api_internalsalemaster',  'id'),
+                ('api_internalsalebill',    'id'),
+                ('api_internalsale',        'id'),
+                ('api_purchasereturn',      'id'),
+                ('api_directsalemaster',    'id'),
+                ('api_directsale',          'id'),
+                ('api_stocktransfer',       'id'),
+                ('api_itemreturn',          'id'),
+                ('api_itemreturnline',      'id'),
+                ('api_physicalstockrequest','id'),
+                ('api_stockadjustmentrequest','id'),
+            ]
+            with connection.cursor() as cursor:
+                for table, col in tables_with_sequences:
+                    cursor.execute(
+                        f"SELECT setval(pg_get_serial_sequence('{table}', '{col}'), "
+                        f"COALESCE((SELECT MAX({col}) FROM {table}), 0) + 1, false)"
                     )
 
             return Response({'detail': 'Backup restored successfully'})

@@ -69,7 +69,7 @@ export default function Layout() {
         </div>
       </nav>
 
-      <main style={{ flex: 1, padding: '28px 28px', maxWidth: 1400, width: '100%', margin: '0 auto' }}>
+      <main style={{ flex: 1, padding: '28px 28px', width: '100%', boxSizing: 'border-box' }}>
         <Outlet />
       </main>
     </div>
