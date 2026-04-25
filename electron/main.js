@@ -140,12 +140,15 @@ mainWindow.maximize();
   // ── Find the built frontend index.html ──────────────────────────────────────
   let indexPath;
   if (app.isPackaged) {
-    // When packaged, frontend/build is inside resources/app/frontend/build
-    indexPath = path.join(process.resourcesPath, 'app', 'frontend', 'build', 'index.html');
-    // Fallback: try asar unpacked location
-    if (!fs.existsSync(indexPath)) {
-      indexPath = path.join(path.dirname(app.getPath('exe')), 'resources', 'app', 'frontend', 'build', 'index.html');
-    }
+    const exeDir = path.dirname(app.getPath('exe'));
+    const candidates = [
+      path.join(process.resourcesPath, 'app', 'frontend', 'build', 'index.html'),
+      path.join(process.resourcesPath, 'frontend', 'build', 'index.html'),
+      path.join(exeDir, 'resources', 'app', 'frontend', 'build', 'index.html'),
+      path.join(exeDir, 'resources', 'app.asar', 'frontend', 'build', 'index.html'),
+      path.join(__dirname, '..', 'frontend', 'build', 'index.html'),
+    ];
+    indexPath = candidates.find(p => fs.existsSync(p)) || candidates[0];
   } else {
     indexPath = path.join(__dirname, '..', 'frontend', 'build', 'index.html');
   }
@@ -247,12 +250,19 @@ app.whenReady().then(async () => {
     // Check server config
     const configPath = path.join(app.getPath('userData'), 'server-config.json');
     let isClientMode = false;
+    let hasConfig = false;
+
     try {
       const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      hasConfig = true;
       isClientMode = config?.mode === 'client';
     } catch {}
 
-    if (!isClientMode) {
+    // Only start Django if:
+    // 1. Config exists AND
+    // 2. Mode is server (not client)
+    // If no config exists, just show the setup screen without starting Django
+    if (hasConfig && !isClientMode) {
       await startDjango();
     }
 
