@@ -1,130 +1,143 @@
-import React, { useEffect, useRef } from 'react';
-import { usePrinter, PrinterPickerModal } from '../hooks/usePrinter';
-
-const fmt = n => `₹${parseFloat(n || 0).toFixed(2)}`;
+import React, { useEffect } from 'react';
+import { usePrinter } from '../hooks/usePrinter';
 
 const payLabel = {
   cash: 'Cash', card: 'Card', upi: 'UPI',
   cash_card: 'Cash & Card', cash_upi: 'Cash & UPI',
 };
 
-function buildBillHTML(bill) {
-  const items   = bill.items || [];
-  const total   = parseFloat(bill.total_amount || 0);
-  let totalTax  = 0;
-  let taxRows   = '';
-
-  items.forEach(item => {
-    const taxRate = parseFloat(item.tax || 0);
-    const price   = parseFloat(item.price || 0);
-    const qty     = parseFloat(item.quantity || 0);
-    const subtotal = price * qty;
-    const taxable  = subtotal / (1 + taxRate / 100);
-    const itemTax  = subtotal - taxable;
-    totalTax += itemTax;
-    if (taxRate > 0) {
-      taxRows += `
-        <tr><td>${item.product_name}</td>
-        <td style="text-align:right">${(taxRate/2).toFixed(1)}% — ₹${(itemTax/2).toFixed(2)}</td>
-        <td style="text-align:right">${(taxRate/2).toFixed(1)}% — ₹${(itemTax/2).toFixed(2)}</td></tr>`;
-    }
-  });
-
-  const itemRows = items.map(item => {
-    const qty      = parseFloat(item.quantity || 0);
-    const price    = parseFloat(item.price    || 0);
-    const subtotal = qty * price;
-    return `<tr>
-      <td style="font-weight:600">${item.product_name}</td>
-      <td style="text-align:center;color:#555">${qty % 1 === 0 ? qty : qty.toFixed(3)}</td>
-      <td style="text-align:right;font-weight:600">₹${subtotal.toFixed(2)}</td>
-    </tr>`;
-  }).join('');
-
-  const taxSection = totalTax > 0 ? `
-    <tr><td colspan="3"><hr style="border:none;border-top:1px dashed #999;margin:6px 0"/></td></tr>
-    <tr><td>Taxable Amount</td><td></td><td style="text-align:right">₹${(total - totalTax).toFixed(2)}</td></tr>
-    <tr><td>CGST</td><td></td><td style="text-align:right">₹${(totalTax/2).toFixed(2)}</td></tr>
-    <tr><td>SGST</td><td></td><td style="text-align:right">₹${(totalTax/2).toFixed(2)}</td></tr>
-    <tr><td colspan="3"><hr style="border:none;border-top:1px dashed #999;margin:6px 0"/></td></tr>
-    <tr style="font-weight:700"><td>Total Tax</td><td></td><td style="text-align:right">₹${totalTax.toFixed(2)}</td></tr>
-    <tr><td colspan="3"><hr style="border:none;border-top:1px dashed #999;margin:6px 0"/></td></tr>` : '';
-
-  return `<!DOCTYPE html><html><head><meta charset="utf-8">
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: 'Courier New', monospace; font-size: 14px; color: #000; background: #fff; padding: 4mm 3mm; width: 80mm; margin: 0; }
-    table { width: 100%; border-collapse: collapse; }
-    td { padding: 3px 0; font-size: 13px; vertical-align: top; }
-    hr { border: none; border-top: 1px dashed #999; margin: 6px 0; }
-    .center { text-align: center; }
-    .total-row td { font-size: 18px; font-weight: 900; }
-  </style></head><body>
-  <div class="center" style="margin-bottom:10px">
-    <div style="font-size:24px;font-weight:900;letter-spacing:2px">BAKESALE</div>
-    <div style="font-size:12px;color:#555;margin-top:2px">
-      GST IN: 27AAACB7450P1ZV<br>FSSAI: 10012022000234
-    </div>
-  </div>
-  <hr/>
-  <table>
-    <tr><td>Bill No</td><td style="text-align:right;font-weight:700">${bill.bill_number}</td></tr>
-    <tr><td>Date</td><td style="text-align:right">${new Date(bill.created_at).toLocaleDateString('en-IN')}</td></tr>
-    <tr><td>Time</td><td style="text-align:right">${new Date(bill.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</td></tr>
-    <tr><td>Payment</td><td style="text-align:right">${payLabel[bill.payment_type] || bill.payment_type}</td></tr>
-    ${bill.created_by_username ? `<tr><td>Cashier</td><td style="text-align:right">${bill.created_by_username}</td></tr>` : ''}
-  </table>
-  <hr/>
-  <table>
-    <tr style="font-weight:700;font-size:13px">
-      <td>Item</td><td style="text-align:center">Qty</td><td style="text-align:right">Amount</td>
-    </tr>
-    ${itemRows}
-  </table>
-  <hr/>
-  <table>
-    ${taxSection}
-    <tr class="total-row"><td>TOTAL</td><td></td><td style="text-align:right">${fmt(total)}</td></tr>
-  </table>
-  <hr/>
-  <div class="center" style="font-size:12px;color:#888;margin-top:8px">
-    <div>Thank you for your purchase!</div>
-    <div style="margin-top:2px">Items sold are non-returnable</div>
-  </div>
-</body></html>`;
+// Pad label left, value right, total `w` chars
+function lr(label, value, w = 32) {
+  const l = String(label);
+  const v = String(value);
+  const gap = w - l.length - v.length;
+  return l + (gap > 0 ? ' '.repeat(gap) : ' ') + v;
 }
+const divider = (c = '-', w = 32) => c.repeat(w);
 
 export default function PrintBill({ bill, onClose }) {
-  const { printBill, openPrinterSettings, showPrinterPicker, setShowPrinterPicker, printers, selectDefaultPrinter } = usePrinter();
-  const hasPrinted = useRef(false);
+  const { printBill } = usePrinter();
 
-  // Auto-print silently as soon as bill loads
-  useEffect(() => {
-    if (!bill || hasPrinted.current) return;
-    hasPrinted.current = true;
-    printBill(buildBillHTML(bill));
-  }, [bill, printBill]);
+  const doPrint = () => {
+    if (!bill) return;
 
-  // Enter = reprint, Escape = close
+    const items  = bill.items || [];
+    const total  = parseFloat(bill.total_amount || 0);
+    let totalTax = 0;
+    items.forEach(item => {
+      const r = parseFloat(item.tax || 0);
+      const s = parseFloat(item.price || 0) * parseFloat(item.quantity || 0);
+      if (r > 0) totalTax += s - s / (1 + r / 100);
+    });
+
+    const W = 32;
+    const lines = [];
+
+    // Header — centred
+    const centre = (s, w = W) => {
+      const pad = Math.max(0, Math.floor((w - s.length) / 2));
+      return ' '.repeat(pad) + s;
+    };
+
+    lines.push(centre('BAKESALE'));
+    lines.push(centre('GST IN: 27AAACB7450P1ZV'));
+    lines.push(centre('FSSAI: 10012022000234'));
+    lines.push(divider('-', W));
+
+    // Bill info
+    lines.push(lr('Bill No', bill.bill_number, W));
+    lines.push(lr('Date', new Date(bill.created_at).toLocaleDateString('en-IN'), W));
+    lines.push(lr('Time', new Date(bill.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }), W));
+    lines.push(lr('Payment', payLabel[bill.payment_type] || bill.payment_type, W));
+    if (bill.created_by_username) lines.push(lr('Cashier', bill.created_by_username, W));
+    lines.push(divider('-', W));
+
+    // Items header
+    // Columns: name(16) | qty(5) | amount(11)
+    lines.push('Item            ' + '   Qty' + '    Amount');
+    lines.push(divider('-', W));
+
+    items.forEach(item => {
+      const qty      = parseFloat(item.quantity || 0);
+      const price    = parseFloat(item.price    || 0);
+      const subtotal = qty * price;
+      const qtyStr = (qty % 1 === 0 ? String(qty) : qty.toFixed(3)).padStart(6);
+      const amtStr = ('Rs.' + subtotal.toFixed(2)).padStart(10);
+      const name   = item.product_name || '';
+      // First line: up to 16 chars of name + qty + amount
+      const firstChunk = name.substring(0, 16);
+      lines.push(firstChunk.padEnd(16) + qtyStr + amtStr);
+      // Remaining name chars wrap to next lines, max 16 chars each (stays in name column)
+      let rest = name.substring(16);
+      while (rest.length > 0) {
+        lines.push(rest.substring(0, 16));
+        rest = rest.substring(16);
+      }
+    });
+
+    lines.push(divider('-', W));
+
+    // Tax
+    if (totalTax > 0) {
+      lines.push(lr('Taxable Amount', 'Rs.' + (total - totalTax).toFixed(2), W));
+      lines.push(lr('CGST',           'Rs.' + (totalTax / 2).toFixed(2), W));
+      lines.push(lr('SGST',           'Rs.' + (totalTax / 2).toFixed(2), W));
+      lines.push(divider('-', W));
+      lines.push(lr('Total Tax',      'Rs.' + totalTax.toFixed(2), W));
+      lines.push(divider('-', W));
+    }
+
+    // Total
+    lines.push(lr('TOTAL', 'Rs.' + total.toFixed(2), W));
+    lines.push(divider('-', W));
+    lines.push(centre('Thank you for your purchase!'));
+    lines.push(centre('Items sold are non-returnable'));
+    // Feed lines for auto-cut
+    lines.push('');
+    lines.push('');
+    lines.push('');
+
+    const text = lines.join('\n');
+
+    // Each line at 9.5pt * 1.5 line-height = ~14.25pt = ~5.03mm
+    // Plus 4mm top+bottom margin
+    const lineHeightMm = 5.1;
+    const totalHeightMm = lines.length * lineHeightMm + 8;
+    const heightMicrons = Math.round(totalHeightMm * 1000);
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+@page { size: 80mm ${totalHeightMm.toFixed(1)}mm; margin: 2mm 2mm; }
+html, body { margin: 0; padding: 0; width: 76mm;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 9.5pt; line-height: 1.5; color: #000; background: #fff;
+  font-weight: bold; -webkit-print-color-adjust: exact; }
+pre { margin: 0; padding: 0; white-space: pre; overflow: hidden; font-weight: bold; }
+</style></head><body><pre>${text}</pre></body></html>`;
+
+    printBill(html, { width: 80000, height: heightMicrons });
+  };
+
   useEffect(() => {
     const handleKey = (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); printBill(buildBillHTML(bill)); }
+      if (e.key === 'Enter')  { e.preventDefault(); doPrint(); }
       if (e.key === 'Escape') { e.preventDefault(); onClose(); }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [bill, onClose, printBill]);
+  }, [onClose, bill]);
 
   if (!bill) return null;
 
-  const items = bill.items || [];
-  const total = parseFloat(bill.total_amount || 0);
-  let totalTax = 0;
+  // ── Screen preview — exactly as before ──
+  const items   = bill.items || [];
+  const total   = parseFloat(bill.total_amount || 0);
+  let totalTax  = 0;
   items.forEach(item => {
-    const taxRate  = parseFloat(item.tax || 0);
-    const subtotal = parseFloat(item.price || 0) * parseFloat(item.quantity || 0);
-    totalTax += subtotal - subtotal / (1 + taxRate / 100);
+    const r = parseFloat(item.tax || 0);
+    const s = parseFloat(item.price || 0) * parseFloat(item.quantity || 0);
+    if (r > 0) totalTax += s - s / (1 + r / 100);
   });
+  const fmtRs = n => `Rs.${parseFloat(n || 0).toFixed(2)}`;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -132,15 +145,13 @@ export default function PrintBill({ bill, onClose }) {
         onClick={e => e.stopPropagation()}>
 
         <div className="no-print" style={{ display: 'flex', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg2)' }}>
-          <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}
-            onClick={() => printBill(buildBillHTML(bill))}>
-            🖨️ Reprint (Enter)
+          <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={doPrint}>
+            🖨️ Print Bill (Enter)
           </button>
-          <button className="btn btn-secondary" onClick={openPrinterSettings} title="Change default printer">⚙️</button>
-          <button className="btn btn-secondary" onClick={onClose}>✕ Close</button>
+          <button className="btn btn-secondary" onClick={onClose}>✕ Close (Esc)</button>
         </div>
 
-        <div id="print-bill-content" style={{ padding: '20px 24px', fontFamily: 'monospace', fontSize: 13, color: '#000', background: '#fff', lineHeight: 1.6 }}>
+        <div style={{ padding: '20px 24px', fontFamily: 'monospace', fontSize: 13, color: '#000', background: '#fff', lineHeight: 1.6 }}>
 
           <div style={{ textAlign: 'center', marginBottom: 12 }}>
             <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: 2 }}>BAKESALE</div>
@@ -153,23 +164,18 @@ export default function PrintBill({ bill, onClose }) {
           <div style={{ borderTop: '1px dashed #999', margin: '8px 0' }} />
 
           <div style={{ fontSize: 12, marginBottom: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Bill No</span><span style={{ fontWeight: 700 }}>{bill.bill_number}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Date</span><span>{new Date(bill.created_at).toLocaleDateString('en-IN')}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Time</span><span>{new Date(bill.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Payment</span><span>{payLabel[bill.payment_type] || bill.payment_type}</span>
-            </div>
-            {bill.created_by_username && (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Cashier</span><span>{bill.created_by_username}</span>
+            {[
+              ['Bill No',  bill.bill_number],
+              ['Date',     new Date(bill.created_at).toLocaleDateString('en-IN')],
+              ['Time',     new Date(bill.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })],
+              ['Payment',  payLabel[bill.payment_type] || bill.payment_type],
+              ...(bill.created_by_username ? [['Cashier', bill.created_by_username]] : []),
+            ].map(([label, value]) => (
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>{label}</span>
+                <span style={{ fontWeight: label === 'Bill No' ? 700 : 400 }}>{value}</span>
               </div>
-            )}
+            ))}
           </div>
 
           <div style={{ borderTop: '1px dashed #999', margin: '8px 0' }} />
@@ -189,7 +195,7 @@ export default function PrintBill({ bill, onClose }) {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 50px 90px', gap: 10, fontSize: 12, alignItems: 'start' }}>
                   <span style={{ fontWeight: 600, wordBreak: 'break-word', lineHeight: 1.3 }}>{item.product_name}</span>
                   <span style={{ textAlign: 'center', color: '#555' }}>{qty % 1 === 0 ? qty : qty.toFixed(3)}</span>
-                  <span style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(subtotal)}</span>
+                  <span style={{ textAlign: 'right', fontWeight: 600 }}>{fmtRs(subtotal)}</span>
                 </div>
               </div>
             );
@@ -199,25 +205,25 @@ export default function PrintBill({ bill, onClose }) {
 
           {totalTax > 0 && (
             <div style={{ marginTop: 6, fontSize: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Taxable Amount</span><span>{fmt(total - totalTax)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>CGST</span><span>{fmt(totalTax / 2)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>SGST</span><span>{fmt(totalTax / 2)}</span>
-              </div>
+              {[
+                ['Taxable Amount', fmtRs(total - totalTax)],
+                ['CGST',          fmtRs(totalTax / 2)],
+                ['SGST',          fmtRs(totalTax / 2)],
+              ].map(([label, value]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{label}</span><span>{value}</span>
+                </div>
+              ))}
               <div style={{ borderTop: '1px dashed #999', margin: '6px 0' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
-                <span>Total Tax</span><span>{fmt(totalTax)}</span>
+                <span>Total Tax</span><span>{fmtRs(totalTax)}</span>
               </div>
               <div style={{ borderTop: '1px dashed #999', margin: '6px 0' }} />
             </div>
           )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 900, marginTop: 4 }}>
-            <span>TOTAL</span><span>{fmt(total)}</span>
+            <span>TOTAL</span><span>{fmtRs(total)}</span>
           </div>
 
           <div style={{ borderTop: '1px dashed #999', margin: '12px 0 8px' }} />
@@ -227,27 +233,6 @@ export default function PrintBill({ bill, onClose }) {
           </div>
         </div>
       </div>
-
-      {showPrinterPicker && (
-        <PrinterPickerModal
-          printers={printers}
-          onSelect={selectDefaultPrinter}
-          onClose={() => setShowPrinterPicker(false)}
-        />
-      )}
-
-      <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          #print-bill-content, #print-bill-content * { visibility: visible; }
-          #print-bill-content {
-            position: fixed; top: 0; left: 0;
-            width: 80mm; padding: 4mm 3mm; font-size: 14px;
-            font-family: 'Courier New', monospace;
-          }
-          .no-print { display: none !important; }
-        }
-      `}</style>
     </div>
   );
 }

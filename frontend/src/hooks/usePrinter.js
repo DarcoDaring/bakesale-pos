@@ -19,12 +19,13 @@ export function usePrinter() {
   const [pendingPrint, setPendingPrint] = useState(null); // { html, options }
 
   // ── Bill Printing: Silent to default printer ──────────────────────────────
-  const printBill = useCallback(async (html) => {
+  const printBill = useCallback(async (html, pageSizeOverride = null) => {
     if (!isElectron) {
       // Browser fallback
       const w = window.open('', '_blank');
-      w.document.write(html);
+      w.document.write(`<!DOCTYPE html><html><head><style>@page{size:80mm auto;margin:0}body{margin:0;padding:4mm 3mm;font-family:'Courier New',monospace;width:80mm}</style></head><body>${html}</body></html>`);
       w.document.close();
+      w.focus();
       w.print();
       w.close();
       return;
@@ -36,9 +37,12 @@ export function usePrinter() {
         toast.error('No default printer set. Please configure printer in Settings.');
         return;
       }
+      const pageSize = pageSizeOverride || { width: 80000, height: 2000000 };
       await window.electronAPI.silentPrint(html, printerName, {
-        pageSize: { width: 80000, height: 2970000 }, // 80mm thermal roll, long height for auto-cut
+        pageSize,
         margins: { marginType: 'none' },
+        scaleFactor: 100,
+        printBackground: true,
       });
       toast.success('Bill printed!');
     } catch (e) {
