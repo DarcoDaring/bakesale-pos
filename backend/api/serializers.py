@@ -8,6 +8,7 @@ from .models import (
     ItemReturn, ItemReturnLine, InternalSaleBill
 )
 from decimal import Decimal
+from django.db import transaction
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -223,72 +224,71 @@ class SaleBillSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'bill_number', 'created_at']
 
     def create(self, validated_data):
-        items_data  = validated_data.pop('items')
-        bill_number = SaleBill.generate_bill_number()
-        bill        = SaleBill.objects.create(bill_number=bill_number, **validated_data)
+        items_data = validated_data.pop('items')
 
-        for item_data in items_data:
-            # Lock the product row to prevent race conditions with simultaneous sales
-            product  = Product.objects.select_for_update().get(pk=item_data['product'].pk)
-            qty      = Decimal(str(item_data['quantity']))
-            batch_id = item_data.pop('batch_id', None)
-            batch    = None
+        with transaction.atomic():
+            bill_number = SaleBill.generate_bill_number()
+            bill        = SaleBill.objects.create(bill_number=bill_number, **validated_data)
 
-            if batch_id:
-                try:
-                    batch = StockBatch.objects.select_for_update().get(id=batch_id, product=product)
-                except StockBatch.DoesNotExist:
-                    pass
+            for item_data in items_data:
+                # Lock the product row to prevent race conditions with simultaneous sales
+                product  = Product.objects.select_for_update().get(pk=item_data['product'].pk)
+                qty      = Decimal(str(item_data['quantity']))
+                batch_id = item_data.pop('batch_id', None)
+                batch    = None
 
-            if batch:
-                if batch.quantity < qty:
-                    bill.delete()
-                    raise serializers.ValidationError(
-                        f"Insufficient stock in batch ₹{batch.mrp} for {product.name}"
-                    )
-                batch.quantity -= qty
-                batch.save()
-            else:
-                remaining = qty
-                for b in StockBatch.objects.select_for_update().filter(
-                    product=product, quantity__gt=0
-                ).order_by('mrp', 'created_at'):
-                    if remaining <= 0:
-                        break
-                    deduct = min(Decimal(str(b.quantity)), remaining)
-                    b.quantity -= deduct
-                    b.save()
-                    remaining -= deduct
+                if batch_id:
+                    try:
+                        batch = StockBatch.objects.select_for_update().get(id=batch_id, product=product)
+                    except StockBatch.DoesNotExist:
+                        pass
 
-                if remaining > Decimal('0.001'):
-                    bill.delete()
-                    raise serializers.ValidationError(
-                        f"Insufficient stock for {product.name}"
-                    )
+                if batch:
+                    if batch.quantity < qty:
+                        raise serializers.ValidationError(
+                            f"Insufficient stock in batch for {product.name}"
+                        )
+                    batch.quantity -= qty
+                    batch.save()
+                else:
+                    remaining = qty
+                    for b in StockBatch.objects.select_for_update().filter(
+                        product=product, quantity__gt=0
+                    ).order_by('mrp', 'created_at'):
+                        if remaining <= 0:
+                            break
+                        deduct = min(Decimal(str(b.quantity)), remaining)
+                        b.quantity -= deduct
+                        b.save()
+                        remaining -= deduct
 
-            # Use product.tax (set by purchase or opening stock); fall back to last purchase
-            if float(product.tax or 0) > 0:
-                tax_rate = float(product.tax)
-            else:
-                last = product.purchases.order_by('-date').first()
-                tax_rate = float(last.tax) if last else 0
+                    if remaining > Decimal('0.001'):
+                        raise serializers.ValidationError(
+                            f"Insufficient stock for {product.name}"
+                        )
 
-            SaleItem.objects.create(
-                bill=bill,
-                product=product,
-                batch=batch,
-                quantity=qty,
-                price=item_data['price'],
-                tax=tax_rate
-            )
+                # Use product.tax (set by purchase or opening stock); fall back to last purchase
+                if float(product.tax or 0) > 0:
+                    tax_rate = float(product.tax)
+                else:
+                    last = product.purchases.order_by('-date').first()
+                    tax_rate = float(last.tax) if last else 0
 
-            product.stock_quantity = Decimal(str(product.stock_quantity)) - qty
-            if product.stock_quantity < 0:
-                product.stock_quantity = Decimal('0')
-            product.save()
+                SaleItem.objects.create(
+                    bill=bill,
+                    product=product,
+                    batch=batch,
+                    quantity=qty,
+                    price=item_data['price'],
+                    tax=tax_rate
+                )
+
+                product.stock_quantity = Decimal(str(product.stock_quantity)) - qty
+                if product.stock_quantity < 0:
+                    product.stock_quantity = Decimal('0')
+                product.save()
 
         return bill
-
 
 class SaleBillListSerializer(serializers.ModelSerializer):
     item_count    = serializers.SerializerMethodField()
@@ -574,4 +574,4 @@ class InternalSaleBillSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = InternalSaleBill
-        fields = ['id', 'sale_number', 'destination', 'destination_name', 'date', 'created_by']
+        fields = ['id', 'sale_number', 'destination', 'destination_name', 'date', 'created_by'] 

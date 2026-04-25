@@ -37,7 +37,8 @@ export function usePrinter() {
         return;
       }
       await window.electronAPI.silentPrint(html, printerName, {
-        pageSize: { width: 72000, height: 297000 }, // 72mm thermal roll
+        pageSize: { width: 80000, height: 2970000 }, // 80mm thermal roll, long height for auto-cut
+        margins: { marginType: 'none' },
       });
       toast.success('Bill printed!');
     } catch (e) {
