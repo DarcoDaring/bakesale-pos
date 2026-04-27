@@ -153,7 +153,7 @@ function SearchBar({ onAdd, focusTrigger = 0 }) {
 
       <div style={{ position: 'relative' }}>
         <input ref={inputRef} value={query} onChange={handleChange} onKeyDown={handleKeyDown}
-          placeholder="🔍  Scan barcode or type product name… (Enter → set qty → Enter again to add)"
+          placeholder="🔍  Scan barcode or type product name"
           style={{ fontSize: 16, padding: '12px 16px' }} autoFocus={!pendingProd} />
         {searching && (
           <div style={{ position: 'absolute', right: 14, top: 14, color: 'var(--text3)', fontSize: 12 }}>searching…</div>

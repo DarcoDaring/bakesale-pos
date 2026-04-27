@@ -10,19 +10,16 @@ import { usePermissions } from '../context/PermissionContext';
 const UNITS = ['nos', 'kg', 'case'];
 const fmt   = n => `₹${parseFloat(n || 0).toFixed(2)}`;
 
-// ─── Barcode print settings persistence ──────────────────────────────────────
 const BARCODE_SETTINGS_KEY = 'barcode_print_settings';
 const loadBarcodeSettings = () => {
   try { return JSON.parse(localStorage.getItem(BARCODE_SETTINGS_KEY) || '{}'); }
   catch { return {}; }
 };
 
-// Remove spinner arrows AND mousewheel from number inputs
-const noArrow = e => {
-  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
-};
+const noArrow = e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); };
 const noWheel = e => e.target.blur();
 
+// ─────────────────────────────────────────────────────────────────────────────
 function VendorMasterModal({ onClose }) {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -131,6 +128,7 @@ function VendorFormModal({ vendor, onClose, onSaved }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
 function ProductMasterModal({ onClose }) {
   const [products, setProducts] = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -152,178 +150,326 @@ function ProductMasterModal({ onClose }) {
     } catch { toast.error('Failed to update product'); }
   };
 
-  const printBarcode = (p, expiryDate = null) => {
+  // ── printBarcode: TSC TTP-244 Pro, packed date above expiry ──────────────
+  const printBarcode = p => {
     const handleMessage = event => {
       if (event.data?.type === 'BARCODE_SETTINGS_SAVE') {
         try { localStorage.setItem(BARCODE_SETTINGS_KEY, JSON.stringify(event.data.settings)); }
-        catch { /* ignore */ }
+        catch {}
         window.removeEventListener('message', handleMessage);
       }
     };
     window.addEventListener('message', handleMessage);
 
     const saved = loadBarcodeSettings();
+
+    // TSC TTP-244 Pro: 203 DPI, common label 100×50mm
+    // The physical label is ~100mm wide × 50mm tall.
+    // The white printable area (right side) is ~62mm wide.
+    // We default labelWidth=60, labelHeight=48 to fit inside that white area.
     const d = {
       copies:        saved.copies        ?? 1,
       topOffset:     saved.topOffset     ?? 0,
       leftOffset:    saved.leftOffset    ?? 0,
-      labelWidth:    saved.labelWidth    ?? 50,
-      bcHeight:      saved.bcHeight      ?? 50,
+      labelWidth:    saved.labelWidth    ?? 60,   // mm
+      labelHeight:   saved.labelHeight   ?? 48,   // mm
+      bcHeight:      saved.bcHeight      ?? 36,   // px (barcode bar height)
+      includePacked: saved.includePacked ?? false,
+      packedDate:    saved.packedDate    || '',
       includeExpiry: saved.includeExpiry ?? false,
-      expiryDate:    expiryDate || saved.expiryDate || '',
+      expiryDate:    saved.expiryDate    || '',
     };
 
-    const win = window.open('', '_blank', 'width=660,height=640');
+    const win = window.open('', '_blank', 'width=740,height=720');
     if (!win) { toast.error('Popup blocked. Please allow popups.'); return; }
 
+    // default packed date = today
+    const todayISO = new Date().toISOString().split('T')[0];
+
     win.document.write(`<!DOCTYPE html><html><head>
-      <title>Barcode - ${p.name}</title>
+      <meta charset="utf-8">
+      <title>Barcode — ${p.name}</title>
       <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
       <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Arial, sans-serif; background: #f5f5f5; }
-        .controls { background: #fff; border-bottom: 1px solid #ddd; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
-        .ctrl-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
-        .ctrl-group { display: flex; flex-direction: column; gap: 3px; }
-        .ctrl-group label { font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; }
-        .ctrl-group input, .ctrl-group select { padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
-        .ctrl-group input[type=number] { width: 80px; }
-        .ctrl-group input[type=date]   { width: 150px; }
-        .ctrl-group input[type=checkbox] { width: auto; height: 16px; accent-color: #2563eb; cursor: pointer; }
-        .expiry-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid #eee; flex-wrap: wrap; }
-        .expiry-label { font-size: 12px; font-weight: 600; color: #444; display: flex; align-items: center; gap: 6px; cursor: pointer; }
-        .expiry-date-wrap { display: flex; align-items: center; gap: 6px; }
-        .expiry-date-wrap label { font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; }
-        .btn-row { display: flex; gap: 8px; align-items: center; }
-        .btn-print { padding: 8px 20px; background: #2563eb; color: #fff; border: none; border-radius: 4px; font-size: 13px; font-weight: 700; cursor: pointer; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; font-size: 13px; background: #efefef; color: #111; }
+
+        /* ── Control panel ── */
+        .controls {
+          background: #fff;
+          border-bottom: 2px solid #ccc;
+          padding: 10px 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 9px;
+        }
+        .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+        .grp { display: flex; flex-direction: column; gap: 3px; }
+        .grp > span {
+          font-size: 10px; font-weight: 700; text-transform: uppercase;
+          letter-spacing: .04em; color: #555;
+        }
+        .grp input[type=number] {
+          width: 76px; padding: 5px 7px;
+          border: 1px solid #ccc; border-radius: 4px; font-size: 13px;
+        }
+        .grp input[type=date] {
+          width: 148px; padding: 5px 7px;
+          border: 1px solid #ccc; border-radius: 4px; font-size: 13px;
+        }
+
+        /* ── Date section ── */
+        .date-section {
+          display: flex; flex-wrap: wrap; gap: 20px;
+          padding: 8px 0; border-top: 1px solid #e5e5e5;
+        }
+        .date-block { display: flex; flex-direction: column; gap: 5px; }
+        .toggle-lbl {
+          display: flex; align-items: center; gap: 7px;
+          font-size: 12px; font-weight: 700; color: #222; cursor: pointer; user-select: none;
+        }
+        .toggle-lbl input[type=checkbox] { width: 15px; height: 15px; accent-color: #2563eb; cursor: pointer; }
+        .date-row {
+          display: flex; align-items: center; gap: 8px; margin-left: 22px;
+        }
+        .date-row > span { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666; }
+
+        /* ── Buttons ── */
+        .btn-row {
+          display: flex; gap: 8px; align-items: center;
+          padding-top: 6px; border-top: 1px solid #e5e5e5;
+        }
+        .btn-print {
+          padding: 8px 22px; background: #2563eb; color: #fff;
+          border: none; border-radius: 5px; font-size: 13px; font-weight: 700; cursor: pointer;
+        }
         .btn-print:hover { background: #1d4ed8; }
-        .btn-save { padding: 8px 14px; background: #16a34a; color: #fff; border: none; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .btn-save {
+          padding: 8px 16px; background: #16a34a; color: #fff;
+          border: none; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer;
+        }
         .btn-save:hover { background: #15803d; }
-        .saved-badge { font-size: 11px; color: #16a34a; font-weight: 600; display: none; animation: fadeIn 0.2s; }
-        @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
-        .preview { padding: 20px; display: flex; flex-wrap: wrap; gap: 10px; }
-        .label-box { text-align: center; padding: 8px 10px; border: 1px solid #ccc; background: #fff; border-radius: 4px; }
-        .prod-name { font-size: 11px; font-weight: 700; margin-bottom: 3px; word-break: break-word; }
-        .price { font-size: 12px; font-weight: 800; margin-top: 3px; }
-        .expiry-print { font-size: 10px; color: #444; margin-top: 2px; font-weight: 600; }
-        @media print { .controls { display: none !important; } body { background: #fff; } .preview { padding: 0; gap: 0; } }
+        .saved  { font-size: 11px; color: #16a34a; font-weight: 700; display: none; }
+        .dirty  { font-size: 11px; color: #b45309; }
+
+        /* ── Preview / print area ── */
+        .preview {
+          padding: 20px; display: flex; flex-wrap: wrap; gap: 12px;
+          background: #ddd; min-height: 80px;
+        }
+
+        /* Label box — mirrors physical white area of the TSC label */
+        .lbl {
+          background: #fff;
+          border: 1px solid #aaa;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 3px 5px;
+          text-align: center;
+          /* width & height driven by JS */
+        }
+        .lbl-name  { font-size: 10px; font-weight: 800; line-height: 1.2; margin-bottom: 1px; word-break: break-word; }
+        .lbl-price { font-size: 12px; font-weight: 900; margin-top: 2px; }
+        .lbl-date  { font-size: 9px;  font-weight: 700; color: #222; margin-top: 1px; line-height: 1.4; }
+
+        /* Print: hide controls, remove gaps */
+        @media print {
+          .controls { display: none !important; }
+          body, .preview { background: #fff; padding: 0; margin: 0; gap: 0; }
+          .lbl { border: none; }
+        }
       </style>
     </head><body>
-      <div class="controls">
-        <div class="ctrl-row">
-          <div class="ctrl-group"><label>Copies</label><input type="number" id="copies" value="${d.copies}" min="1" max="50" oninput="renderLabels(); markDirty()" /></div>
-          <div class="ctrl-group"><label>Top (mm)</label><input type="number" id="topOffset" value="${d.topOffset}" min="-50" max="100" oninput="renderLabels(); markDirty()" /></div>
-          <div class="ctrl-group"><label>Left (mm)</label><input type="number" id="leftOffset" value="${d.leftOffset}" min="-50" max="100" oninput="renderLabels(); markDirty()" /></div>
-          <div class="ctrl-group"><label>Width (mm)</label><input type="number" id="labelWidth" value="${d.labelWidth}" min="20" max="150" oninput="renderLabels(); markDirty()" /></div>
-          <div class="ctrl-group"><label>BC Height</label><input type="number" id="bcHeight" value="${d.bcHeight}" min="20" max="120" oninput="renderLabels(); markDirty()" /></div>
+
+    <div class="controls">
+
+      <!-- Sizing row -->
+      <div class="row">
+        <div class="grp"><span>Copies</span>
+          <input type="number" id="copies" value="${d.copies}" min="1" max="200" oninput="render();dirty()">
         </div>
-        <div class="expiry-row">
-          <label class="expiry-label">
-            <input type="checkbox" id="includeExpiry" ${d.includeExpiry ? 'checked' : ''}
-              onchange="toggleExpiry(); renderLabels(); markDirty()" />
-            📅 Add Expiry Date to Barcode
-          </label>
-          <div class="expiry-date-wrap" id="expiryDateWrap" style="display:${d.includeExpiry ? 'flex' : 'none'}">
-            <label>Expiry Date:</label>
-            <input type="date" id="expiryDate" value="${d.expiryDate}"
-              oninput="renderLabels(); markDirty()" />
-          </div>
+        <div class="grp"><span>Top (mm)</span>
+          <input type="number" id="topOff" value="${d.topOffset}" min="-50" max="100" oninput="render();dirty()">
         </div>
-        <div class="btn-row">
-          <button class="btn-print" onclick="saveAndPrint()">🖨️ Save &amp; Print</button>
-          <button class="btn-save"  onclick="saveSettings()">💾 Save Settings</button>
-          <span class="saved-badge" id="savedBadge">✓ Settings saved!</span>
-          <span style="font-size:11px;color:#6c757d;margin-left:4px;" id="dirtyNote"></span>
+        <div class="grp"><span>Left (mm)</span>
+          <input type="number" id="leftOff" value="${d.leftOffset}" min="-50" max="100" oninput="render();dirty()">
+        </div>
+        <div class="grp"><span>Width (mm)</span>
+          <input type="number" id="lw" value="${d.labelWidth}" min="20" max="150" oninput="render();dirty()">
+        </div>
+        <div class="grp"><span>Height (mm)</span>
+          <input type="number" id="lh" value="${d.labelHeight}" min="10" max="150" oninput="render();dirty()">
+        </div>
+        <div class="grp"><span>BC Height (px)</span>
+          <input type="number" id="bch" value="${d.bcHeight}" min="10" max="120" oninput="render();dirty()">
         </div>
       </div>
-      <div class="preview" id="preview"></div>
-      <script>
-        const STORAGE_KEY = 'barcode_print_settings';
-        const barcode = "${p.barcode}";
-        const name    = ${JSON.stringify(p.name)};
-        const price   = "₹${parseFloat(p.selling_price || 0).toFixed(2)}";
 
-        function toggleExpiry() {
-          const checked = document.getElementById('includeExpiry').checked;
-          document.getElementById('expiryDateWrap').style.display = checked ? 'flex' : 'none';
-        }
+      <!-- Date toggles -->
+      <div class="date-section">
 
-        function formatExpiry(dateStr) {
-          if (!dateStr) return '';
-          try {
-            const dt = new Date(dateStr + 'T00:00:00');
-            return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-          } catch { return dateStr; }
-        }
+        <!-- Packed Date -->
+        <div class="date-block">
+          <label class="toggle-lbl">
+            <input type="checkbox" id="chkPacked" ${d.includePacked ? 'checked' : ''}
+              onchange="togglePacked();render();dirty()">
+            📦 Packed Date
+          </label>
+          <div class="date-row" id="wrapPacked" style="display:${d.includePacked ? 'flex' : 'none'}">
+            <span>Date:</span>
+            <input type="date" id="packedDate" value="${d.packedDate || todayISO}" oninput="render();dirty()">
+          </div>
+        </div>
 
-        function getValues() {
-          return {
-            copies:        Math.min(50, parseInt(document.getElementById('copies').value)||1),
-            topOffset:     parseInt(document.getElementById('topOffset').value)||0,
-            leftOffset:    parseInt(document.getElementById('leftOffset').value)||0,
-            labelWidth:    parseInt(document.getElementById('labelWidth').value)||50,
-            bcHeight:      parseInt(document.getElementById('bcHeight').value)||50,
-            includeExpiry: document.getElementById('includeExpiry').checked,
-            expiryDate:    document.getElementById('expiryDate').value || '',
-          };
-        }
+        <!-- Expiry Date -->
+        <div class="date-block">
+          <label class="toggle-lbl">
+            <input type="checkbox" id="chkExpiry" ${d.includeExpiry ? 'checked' : ''}
+              onchange="toggleExpiry();render();dirty()">
+            📅 Expiry Date
+          </label>
+          <div class="date-row" id="wrapExpiry" style="display:${d.includeExpiry ? 'flex' : 'none'}">
+            <span>Date:</span>
+            <input type="date" id="expiryDate" value="${d.expiryDate}" oninput="render();dirty()">
+          </div>
+        </div>
 
-        function saveSettings() {
-          const v = getValues();
-          try { window.opener.postMessage({ type: 'BARCODE_SETTINGS_SAVE', settings: v }, '*'); } catch(e) {}
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(v)); } catch(e) {}
-          const badge = document.getElementById('savedBadge');
-          badge.style.display = 'inline';
-          document.getElementById('dirtyNote').textContent = '';
-          setTimeout(() => { badge.style.display = 'none'; }, 2500);
-        }
+      </div>
 
-        function markDirty() { document.getElementById('dirtyNote').textContent = '(unsaved changes)'; }
-        function saveAndPrint() { saveSettings(); window.print(); }
+      <!-- Action buttons -->
+      <div class="btn-row">
+        <button class="btn-print" onclick="saveThenPrint()">🖨️ Save &amp; Print</button>
+        <button class="btn-save"  onclick="save()">💾 Save Settings</button>
+        <span class="saved" id="savedBadge">✓ Saved!</span>
+        <span class="dirty" id="dirtyNote"></span>
+      </div>
+    </div>
 
-        function renderLabels() {
-          const { copies, topOffset, leftOffset, labelWidth, bcHeight, includeExpiry, expiryDate } = getValues();
-          const preview = document.getElementById('preview');
-          preview.style.marginTop  = topOffset  + 'mm';
-          preview.style.marginLeft = leftOffset + 'mm';
-          preview.innerHTML = '';
+    <div class="preview" id="preview"></div>
 
-          for (let i = 0; i < copies; i++) {
-            const box = document.createElement('div');
-            box.className = 'label-box';
-            box.style.width = labelWidth + 'mm';
+    <script>
+      /* ── constants ─────────────────────────────────────── */
+      const STORE_KEY = 'barcode_print_settings';
+      const BC_VAL    = ${JSON.stringify(p.barcode)};
+      const PROD_NAME = ${JSON.stringify(p.name)};
+      const PRICE_STR = 'MRP: ₹${parseFloat(p.selling_price || 0).toFixed(2)}';
+      const TODAY     = '${todayISO}';
 
-            const nameDiv = document.createElement('div');
-            nameDiv.className = 'prod-name';
-            nameDiv.textContent = name;
-            box.appendChild(nameDiv);
+      /* ── toggle helpers ──────────────────────────────────── */
+      function togglePacked() {
+        const on = document.getElementById('chkPacked').checked;
+        document.getElementById('wrapPacked').style.display = on ? 'flex' : 'none';
+        if (on && !document.getElementById('packedDate').value)
+          document.getElementById('packedDate').value = TODAY;
+      }
+      function toggleExpiry() {
+        const on = document.getElementById('chkExpiry').checked;
+        document.getElementById('wrapExpiry').style.display = on ? 'flex' : 'none';
+      }
 
-            const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-            svgEl.setAttribute('id', 'bc' + i);
-            box.appendChild(svgEl);
+      /* ── date formatter DD-MMM-YYYY ─────────────────────── */
+      function fmtDate(s) {
+        if (!s) return '';
+        try {
+          return new Date(s + 'T00:00:00').toLocaleDateString('en-IN',
+            { day: '2-digit', month: 'short', year: 'numeric' });
+        } catch { return s; }
+      }
 
-            const priceDiv = document.createElement('div');
-            priceDiv.className = 'price';
-            priceDiv.textContent = price;
-            box.appendChild(priceDiv);
+      /* ── read control values ─────────────────────────────── */
+      function vals() {
+        return {
+          copies:        Math.max(1, Math.min(200, parseInt(document.getElementById('copies').value) || 1)),
+          topOffset:     parseInt(document.getElementById('topOff').value)  || 0,
+          leftOffset:    parseInt(document.getElementById('leftOff').value) || 0,
+          labelWidth:    parseInt(document.getElementById('lw').value)  || 60,
+          labelHeight:   parseInt(document.getElementById('lh').value)  || 48,
+          bcHeight:      parseInt(document.getElementById('bch').value) || 36,
+          includePacked: document.getElementById('chkPacked').checked,
+          packedDate:    document.getElementById('packedDate').value || '',
+          includeExpiry: document.getElementById('chkExpiry').checked,
+          expiryDate:    document.getElementById('expiryDate').value  || '',
+        };
+      }
 
-            if (includeExpiry && expiryDate) {
-              const expiryDiv = document.createElement('div');
-              expiryDiv.className = 'expiry-print';
-              expiryDiv.textContent = 'Exp: ' + formatExpiry(expiryDate);
-              box.appendChild(expiryDiv);
-            }
+      /* ── save to localStorage + postMessage ──────────────── */
+      function save() {
+        const v = vals();
+        try { localStorage.setItem(STORE_KEY, JSON.stringify(v)); } catch(e) {}
+        try { window.opener.postMessage({ type: 'BARCODE_SETTINGS_SAVE', settings: v }, '*'); } catch(e) {}
+        const b = document.getElementById('savedBadge');
+        b.style.display = 'inline';
+        document.getElementById('dirtyNote').textContent = '';
+        setTimeout(() => { b.style.display = 'none'; }, 2500);
+      }
+      function dirty()       { document.getElementById('dirtyNote').textContent = '(unsaved changes)'; }
+      function saveThenPrint(){ save(); window.print(); }
 
-            preview.appendChild(box);
-            JsBarcode('#bc' + i, barcode, {
-              format: 'CODE128', width: 1.8, height: bcHeight,
-              displayValue: true, fontSize: 10, margin: 3
-            });
+      /* ── render label previews ───────────────────────────── */
+      function render() {
+        const v = vals();
+        const preview = document.getElementById('preview');
+        preview.style.marginTop  = v.topOffset  + 'mm';
+        preview.style.marginLeft = v.leftOffset + 'mm';
+        preview.innerHTML = '';
+
+        for (let i = 0; i < v.copies; i++) {
+          const box = document.createElement('div');
+          box.className = 'lbl';
+          box.style.width  = v.labelWidth  + 'mm';
+          box.style.height = v.labelHeight + 'mm';
+
+          /* product name */
+          const n = document.createElement('div');
+          n.className = 'lbl-name';
+          n.textContent = PROD_NAME;
+          box.appendChild(n);
+
+          /* barcode SVG */
+          const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+          svg.setAttribute('id','bc'+i);
+          box.appendChild(svg);
+
+          /* price */
+          const pr = document.createElement('div');
+          pr.className = 'lbl-price';
+          pr.textContent = PRICE_STR;
+          box.appendChild(pr);
+
+          /* ── Packed date (ABOVE expiry) ── */
+          if (v.includePacked && v.packedDate) {
+            const pd = document.createElement('div');
+            pd.className = 'lbl-date';
+            pd.textContent = 'Packed: ' + fmtDate(v.packedDate);
+            box.appendChild(pd);
           }
-        }
 
-        window.onload = renderLabels;
-      <\/script>
+          /* ── Expiry date ── */
+          if (v.includeExpiry && v.expiryDate) {
+            const ed = document.createElement('div');
+            ed.className = 'lbl-date';
+            ed.textContent = 'Exp: ' + fmtDate(v.expiryDate);
+            box.appendChild(ed);
+          }
+
+          preview.appendChild(box);
+
+          /* render barcode — narrower bars for small labels */
+          JsBarcode('#bc'+i, BC_VAL, {
+            format:       'CODE128',
+            width:        v.labelWidth < 50 ? 1.3 : 1.7,
+            height:       v.bcHeight,
+            displayValue: true,
+            fontSize:     9,
+            margin:       2,
+          });
+        }
+      }
+
+      window.onload = render;
+    <\/script>
     </body></html>`);
     win.document.close();
   };
@@ -392,7 +538,6 @@ function ProductMasterModal({ onClose }) {
 
 // ─── Barcode Warning Dialog ───────────────────────────────────────────────────
 function BarcodeWarningDialog({ onConfirm, onCancel }) {
-  // Focus the OK button on mount; handle Enter/Escape globally
   const okRef = useRef();
   useEffect(() => {
     okRef.current?.focus();
@@ -407,57 +552,21 @@ function BarcodeWarningDialog({ onConfirm, onCancel }) {
   return (
     <div className="modal-overlay" style={{ zIndex: 9999 }}>
       <div className="modal" style={{ maxWidth: 380, textAlign: 'center' }}>
-        {/* Icon */}
-        <div style={{
-          width: 60, height: 60, borderRadius: '50%',
-          background: 'rgba(234,179,8,0.15)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 14px',
-        }}>
+        <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'rgba(234,179,8,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
           <span style={{ fontSize: 28 }}>⚠️</span>
         </div>
-
-        <h3 style={{ margin: '0 0 8px', fontSize: 16, color: 'var(--text)' }}>
-          Barcode Not Entered
-        </h3>
-        <p style={{
-          margin: '0 0 20px',
-          fontSize: 13,
-          color: 'var(--text3)',
-          lineHeight: 1.6,
-        }}>
-          No barcode was entered. A custom barcode will be
-          auto-generated for this product.
+        <h3 style={{ margin: '0 0 8px', fontSize: 16, color: 'var(--text)' }}>Barcode Not Entered</h3>
+        <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--text3)', lineHeight: 1.6 }}>
+          No barcode was entered. A custom barcode will be auto-generated for this product.
         </p>
-
         <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            ref={okRef}
-            className="btn btn-primary"
-            style={{ flex: 1, justifyContent: 'center' }}
-            onClick={onConfirm}
-          >
+          <button ref={okRef} className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={onConfirm}>
             ✓ OK, Create
-            <span style={{
-              fontSize: 10, fontWeight: 700,
-              background: 'rgba(255,255,255,0.2)',
-              borderRadius: 4, padding: '1px 5px',
-              marginLeft: 6, fontFamily: 'monospace',
-            }}>Enter</span>
+            <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(255,255,255,0.2)', borderRadius: 4, padding: '1px 5px', marginLeft: 6, fontFamily: 'monospace' }}>Enter</span>
           </button>
-          <button
-            className="btn btn-secondary"
-            style={{ flex: 1, justifyContent: 'center' }}
-            onClick={onCancel}
-          >
+          <button className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }} onClick={onCancel}>
             Cancel
-            <span style={{
-              fontSize: 10,
-              background: 'rgba(255,255,255,0.1)',
-              borderRadius: 4, padding: '1px 5px',
-              marginLeft: 6, fontFamily: 'monospace',
-              color: 'var(--text3)',
-            }}>Esc</span>
+            <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.1)', borderRadius: 4, padding: '1px 5px', marginLeft: 6, fontFamily: 'monospace', color: 'var(--text3)' }}>Esc</span>
           </button>
         </div>
       </div>
@@ -469,17 +578,12 @@ function BarcodeWarningDialog({ onConfirm, onCancel }) {
 function ProductFormModal({ product, onClose, onSaved }) {
   const nameRef    = useRef();
   const barcodeRef = useRef();
-  const [form, setForm] = useState({
-    name:         product?.name    || '',
-    barcode:      product?.barcode || '',
-    auto_barcode: false,
-  });
+  const [form, setForm] = useState({ name: product?.name || '', barcode: product?.barcode || '', auto_barcode: false });
   const [loading,            setLoading]            = useState(false);
   const [showBarcodeWarning, setShowBarcodeWarning] = useState(false);
   const set    = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const isEdit = !!product;
 
-  // The actual API call — called either directly or after warning confirmation
   const doCreate = useCallback(async () => {
     setLoading(true);
     try {
@@ -490,32 +594,20 @@ function ProductFormModal({ product, onClose, onSaved }) {
       onSaved(); onClose();
     } catch (err) {
       toast.error(err.response?.data?.barcode?.[0] || 'Failed to save product');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, [form, onSaved, onClose]);
 
   const handleSubmit = async e => {
     if (e && e.preventDefault) e.preventDefault();
     if (!form.name.trim()) { toast.error('Product name required'); return; }
-
     if (isEdit) {
       setLoading(true);
-      try {
-        await updateProduct(product.id, { name: form.name });
-        toast.success('Product updated');
-        onSaved(); onClose();
-      } catch { toast.error('Failed to save product'); }
+      try { await updateProduct(product.id, { name: form.name }); toast.success('Product updated'); onSaved(); onClose(); }
+      catch { toast.error('Failed to save product'); }
       finally { setLoading(false); }
       return;
     }
-
-    // New product: no barcode entered and not auto → show warning
-    if (!form.auto_barcode && !form.barcode.trim()) {
-      setShowBarcodeWarning(true);
-      return;
-    }
-
+    if (!form.auto_barcode && !form.barcode.trim()) { setShowBarcodeWarning(true); return; }
     await doCreate();
   };
 
@@ -527,89 +619,43 @@ function ProductFormModal({ product, onClose, onSaved }) {
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label>Product Name *</label>
-              <input
-                ref={nameRef}
-                autoFocus
-                value={form.name}
-                onChange={e => set('name', e.target.value)}
+              <input ref={nameRef} autoFocus value={form.name} onChange={e => set('name', e.target.value)}
                 placeholder="e.g. Chocolate Cake"
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (!isEdit && !form.auto_barcode) {
-                      barcodeRef.current?.focus();
-                    } else {
-                      handleSubmit(e);
-                    }
-                  }
-                }}
-              />
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (!isEdit && !form.auto_barcode) barcodeRef.current?.focus(); else handleSubmit(e); } }} />
             </div>
-
             {!isEdit && (
               <>
                 <div className="form-group">
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, textTransform: 'none', letterSpacing: 0 }}>
-                    <input
-                      type="checkbox"
-                      checked={form.auto_barcode}
-                      onChange={e => set('auto_barcode', e.target.checked)}
-                      style={{ width: 'auto' }}
-                    />
+                    <input type="checkbox" checked={form.auto_barcode} onChange={e => set('auto_barcode', e.target.checked)} style={{ width: 'auto' }} />
                     Auto-generate Barcode
                   </label>
                 </div>
-
                 {!form.auto_barcode && (
                   <div className="form-group">
                     <label>Barcode (scan or enter manually)</label>
-                    <input
-                      ref={barcodeRef}
-                      value={form.barcode}
-                      onChange={e => set('barcode', e.target.value)}
-                      placeholder="Scan barcode here…"
-                      style={{ fontFamily: 'var(--mono)' }}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleSubmit(e);
-                        }
-                      }}
-                    />
+                    <input ref={barcodeRef} value={form.barcode} onChange={e => set('barcode', e.target.value)}
+                      placeholder="Scan barcode here…" style={{ fontFamily: 'var(--mono)' }}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(e); } }} />
                   </div>
                 )}
               </>
             )}
-
             {isEdit && (
               <div className="form-group">
                 <label>Barcode</label>
-                <input
-                  value={form.barcode}
-                  readOnly
-                  style={{ fontFamily: 'var(--mono)', opacity: 0.6, cursor: 'not-allowed' }}
-                />
+                <input value={form.barcode} readOnly style={{ fontFamily: 'var(--mono)', opacity: 0.6, cursor: 'not-allowed' }} />
               </div>
             )}
-
             <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                style={{ flex: 1, justifyContent: 'center' }}
-                disabled={loading}
-              >
+              <button type="submit" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} disabled={loading}>
                 {loading ? 'Saving…' : isEdit ? '✓ Update' : '✓ Create'}
               </button>
-              <button type="button" className="btn btn-secondary" onClick={onClose}>
-                Cancel
-              </button>
+              <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
             </div>
           </form>
         </div>
       </div>
-
-      {/* Barcode warning dialog — rendered on top */}
       {showBarcodeWarning && (
         <BarcodeWarningDialog
           onConfirm={() => { setShowBarcodeWarning(false); doCreate(); }}
@@ -620,9 +666,7 @@ function ProductFormModal({ product, onClose, onSaved }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PurchaseReturnModal
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── PurchaseReturnModal ──────────────────────────────────────────────────────
 function PurchaseReturnModal({ onClose }) {
   const [vendors,      setVendors]      = useState([]);
   const [vendorId,     setVendorId]     = useState('');
@@ -664,8 +708,7 @@ function PurchaseReturnModal({ onClose }) {
       if (e.key === 'F1') { e.preventDefault(); handleSubmit(); return; }
       if (e.key === 'Escape') {
         if (vendorOpen) { setVendorOpen(false); return; }
-        e.preventDefault();
-        onClose();
+        e.preventDefault(); onClose();
       }
     };
     window.addEventListener('keydown', handleKey);
@@ -673,33 +716,21 @@ function PurchaseReturnModal({ onClose }) {
   }, [vendorId, lines, reason, loading, vendorOpen]);
 
   useEffect(() => {
-    const handler = e => {
-      if (vendorWrapRef.current && !vendorWrapRef.current.contains(e.target))
-        setVendorOpen(false);
-    };
+    const handler = e => { if (vendorWrapRef.current && !vendorWrapRef.current.contains(e.target)) setVendorOpen(false); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   const filteredVendors = vendors.filter(v =>
-    v.name.toLowerCase().includes(vendorQuery.toLowerCase()) ||
-    (v.phone && v.phone.includes(vendorQuery))
+    v.name.toLowerCase().includes(vendorQuery.toLowerCase()) || (v.phone && v.phone.includes(vendorQuery))
   );
 
   const confirmVendor = v => {
-    setVendorId(String(v.id));
-    setVendorQuery(v.name);
-    setVendorOpen(false);
+    setVendorId(String(v.id)); setVendorQuery(v.name); setVendorOpen(false);
     setTimeout(() => productSearchRef.current?.focus(), 50);
   };
 
-  const handleVendorChange = e => {
-    setVendorQuery(e.target.value);
-    setVendorId('');
-    setVendorHiIdx(0);
-    setVendorOpen(true);
-  };
-
+  const handleVendorChange = e => { setVendorQuery(e.target.value); setVendorId(''); setVendorHiIdx(0); setVendorOpen(true); };
   const handleVendorKeyDown = e => {
     if (e.key === 'ArrowDown') { e.preventDefault(); setVendorHiIdx(h => Math.min(h+1, filteredVendors.length-1)); setVendorOpen(true); return; }
     if (e.key === 'ArrowUp')   { e.preventDefault(); setVendorHiIdx(h => Math.max(h-1, 0)); return; }
@@ -710,11 +741,8 @@ function PurchaseReturnModal({ onClose }) {
   const doSearch = async q => {
     if (!q.trim()) { setResults([]); return; }
     setSearching(true);
-    try {
-      const { data } = await searchProducts(q);
-      setResults(data);
-      setResultHiIdx(0);
-    } catch { setResults([]); } finally { setSearching(false); }
+    try { const { data } = await searchProducts(q); setResults(data); setResultHiIdx(0); }
+    catch { setResults([]); } finally { setSearching(false); }
   };
 
   const handleSearchChange = e => {
@@ -733,16 +761,7 @@ function PurchaseReturnModal({ onClose }) {
       }
       const newKey = `${p.id}_${Date.now()}`;
       lastAddedKeyRef.current = newKey;
-      return [...prev, {
-        _key:         newKey,
-        product_id:   p.id,
-        product_name: p.name,
-        barcode:      p.barcode,
-        mrp:          parseFloat(p.selling_price || 0),
-        qty:          1,
-        selling_unit: p.selling_unit || 'nos',
-        stock:        parseFloat(p.stock_quantity || 0),
-      }];
+      return [...prev, { _key: newKey, product_id: p.id, product_name: p.name, barcode: p.barcode, mrp: parseFloat(p.selling_price || 0), qty: 1, selling_unit: p.selling_unit || 'nos', stock: parseFloat(p.stock_quantity || 0) }];
     });
   };
 
@@ -757,19 +776,13 @@ function PurchaseReturnModal({ onClose }) {
     try {
       const { data } = await getProductByBarcode(query.trim());
       const rows = Array.isArray(data) ? data : [data];
-      if (rows.length > 0) addProduct(rows[0]);
-      else toast.error('Product not found');
+      if (rows.length > 0) addProduct(rows[0]); else toast.error('Product not found');
     } catch { toast.error('Product not found'); }
   };
 
-  const updateLine = (key, field, val) =>
-    setLines(prev => prev.map(l => l._key === key ? { ...l, [field]: val } : l));
+  const updateLine = (key, field, val) => setLines(prev => prev.map(l => l._key === key ? { ...l, [field]: val } : l));
   const removeLine = key => setLines(prev => prev.filter(l => l._key !== key));
-
-  const handleQtyKeyDown = (e, key) => {
-    noArrow(e);
-    if (e.key === 'Enter') { e.preventDefault(); productSearchRef.current?.focus(); }
-  };
+  const handleQtyKeyDown = (e, key) => { noArrow(e); if (e.key === 'Enter') { e.preventDefault(); productSearchRef.current?.focus(); } };
 
   const handleSubmit = async () => {
     if (!vendorId) { toast.error('Please select a vendor first'); return; }
@@ -780,14 +793,7 @@ function PurchaseReturnModal({ onClose }) {
     }
     setLoading(true);
     try {
-      for (const l of lines) {
-        await createPurchaseReturn({
-          product:  l.product_id,
-          vendor:   parseInt(vendorId),
-          quantity: parseFloat(l.qty),
-          reason:   reason || '',
-        });
-      }
+      for (const l of lines) await createPurchaseReturn({ product: l.product_id, vendor: parseInt(vendorId), quantity: parseFloat(l.qty), reason: reason || '' });
       toast.success(`Purchase return recorded for ${lines.length} item(s)!`);
       onClose();
     } catch (err) { toast.error(err.response?.data?.detail || 'Failed to record return'); }
@@ -809,20 +815,10 @@ function PurchaseReturnModal({ onClose }) {
         </div>
 
         <div className="form-group" style={{ position: 'relative' }} ref={vendorWrapRef}>
-          <label>
-            Vendor *
-            {vendorId && <span style={{ color: 'var(--green)', marginLeft: 8, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>✓ selected</span>}
-          </label>
-          <input
-            ref={vendorInputRef}
-            value={vendorQuery}
-            onChange={handleVendorChange}
-            onKeyDown={handleVendorKeyDown}
-            onFocus={() => { if (vendorQuery) setVendorOpen(true); }}
-            placeholder="Type vendor name or use ↑↓ to browse…"
-            style={{ borderColor: vendorId ? 'var(--green)' : undefined }}
-            autoComplete="off"
-          />
+          <label>Vendor *{vendorId && <span style={{ color: 'var(--green)', marginLeft: 8, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>✓ selected</span>}</label>
+          <input ref={vendorInputRef} value={vendorQuery} onChange={handleVendorChange} onKeyDown={handleVendorKeyDown}
+            onFocus={() => { if (vendorQuery) setVendorOpen(true); }} placeholder="Type vendor name or use ↑↓ to browse…"
+            style={{ borderColor: vendorId ? 'var(--green)' : undefined }} autoComplete="off" />
           {vendorOpen && filteredVendors.length > 0 && (
             <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 400, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', marginTop: 2, maxHeight: 220, overflowY: 'auto', boxShadow: 'var(--shadow)' }}>
               {filteredVendors.map((v, i) => (
@@ -894,8 +890,7 @@ function PurchaseReturnModal({ onClose }) {
                         <input type="number" value={l.qty} min="0.001"
                           ref={el => { if (el) qtyRefs.current[l._key] = el; else delete qtyRefs.current[l._key]; }}
                           onChange={e => updateLine(l._key, 'qty', parseFloat(e.target.value) || 1)}
-                          onKeyDown={e => handleQtyKeyDown(e, l._key)}
-                          onWheel={noWheel}
+                          onKeyDown={e => handleQtyKeyDown(e, l._key)} onWheel={noWheel}
                           style={{ width: 60, textAlign: 'center', fontWeight: 700, padding: '4px 6px', fontSize: 13, border: '1px solid var(--accent)', borderRadius: 'var(--radius)' }} />
                         <button className="btn btn-secondary btn-sm" onClick={() => { if (l.qty + 1 > l.stock) { toast.error('Exceeds stock'); return; } updateLine(l._key, 'qty', l.qty + 1); }} style={{ padding: '2px 7px' }}>+</button>
                         <span style={{ fontSize: 11, color: 'var(--text3)' }}>{l.selling_unit}</span>
@@ -930,9 +925,7 @@ function PurchaseReturnModal({ onClose }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ProductSearchCell
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── ProductSearchCell ────────────────────────────────────────────────────────
 function ProductSearchCell({ value, onSelect, onEnterNext }) {
   const [query,    setQuery]    = useState(value?.name || '');
   const [results,  setResults]  = useState([]);
@@ -948,14 +941,8 @@ function ProductSearchCell({ value, onSelect, onEnterNext }) {
     try {
       const { data } = await searchProducts(q);
       const seen = new Set();
-      const unique = data.filter(p => {
-        const key = p.batch_id ? `${p.id}_${p.batch_id}` : String(p.id);
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-      setResults(unique); setHiIdx(0);
-      setOpen(unique.length > 0);
+      const unique = data.filter(p => { const key = p.batch_id ? `${p.id}_${p.batch_id}` : String(p.id); if (seen.has(key)) return false; seen.add(key); return true; });
+      setResults(unique); setHiIdx(0); setOpen(unique.length > 0);
     } catch { setResults([]); setOpen(false); } finally { setSearching(false); }
   }, []);
 
@@ -967,8 +954,7 @@ function ProductSearchCell({ value, onSelect, onEnterNext }) {
 
   const pick = p => {
     setQuery(p.name); setResults([]); setOpen(false); setHiIdx(0);
-    onSelect(p);
-    if (onEnterNext) setTimeout(onEnterNext, 30);
+    onSelect(p); if (onEnterNext) setTimeout(onEnterNext, 30);
   };
 
   const handleKeyDown = async e => {
@@ -983,8 +969,7 @@ function ProductSearchCell({ value, onSelect, onEnterNext }) {
       try {
         const { data } = await getProductByBarcode(q);
         const rows = Array.isArray(data) ? data : [data];
-        if (rows.length > 0) pick(rows[0]);
-        else toast.error('Product not found');
+        if (rows.length > 0) pick(rows[0]); else toast.error('Product not found');
       } catch { toast.error('Product not found'); }
     }
   };
@@ -1001,11 +986,8 @@ function ProductSearchCell({ value, onSelect, onEnterNext }) {
         placeholder="Scan / search…" style={{ fontSize: 13, padding: '6px 10px', width: '100%' }} />
       {searching && <div style={{ position: 'absolute', right: 8, top: 8, fontSize: 11, color: 'var(--text3)' }}>…</div>}
       {open && results.length > 0 && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(0,0,0,0.5)',
-        }} onMouseDown={e => { if (e.target === e.currentTarget) { setResults([]); setOpen(false); } }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)' }}
+          onMouseDown={e => { if (e.target === e.currentTarget) { setResults([]); setOpen(false); } }}>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', width: 520, maxHeight: '70vh', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 12, color: 'var(--text3)', display: 'flex', justifyContent: 'space-between' }}>
               <span>↑↓ to navigate · Enter to select · Esc to close</span>
@@ -1029,9 +1011,7 @@ function ProductSearchCell({ value, onSelect, onEnterNext }) {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--accent)', fontWeight: 700 }}>{fmt(p.selling_price)}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text3)' }}>
-                      Stock: {parseFloat(p.stock_quantity).toFixed(p.selling_unit === 'kg' ? 3 : 0)} {p.selling_unit}
-                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)' }}>Stock: {parseFloat(p.stock_quantity).toFixed(p.selling_unit === 'kg' ? 3 : 0)} {p.selling_unit}</div>
                   </div>
                 </div>
               ))}
@@ -1043,6 +1023,7 @@ function ProductSearchCell({ value, onSelect, onEnterNext }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
 const emptyRow = () => ({
   _id: Date.now() + Math.random(),
   product: null, purchase_unit: 'nos',
@@ -1088,32 +1069,22 @@ export default function Purchase() {
   };
 
   const handleClear = useCallback(() => {
-    setRows([emptyRow()]);
-    setSelectedVendor('');
-    setIsPaid(false);
-    refreshPurchaseNumber();
-    refreshVendors();
+    setRows([emptyRow()]); setSelectedVendor(''); setIsPaid(false);
+    refreshPurchaseNumber(); refreshVendors();
   }, []);
 
   useEffect(() => {
     const handleKey = e => {
       if (showProduct || showVendor || showPurReturn) return;
-
-      if (e.key === 'F12') {
-        e.preventDefault();
-        handleClear();
-        return;
-      }
-
-      if (e.key === 'F1') { e.preventDefault(); handleSubmit(); return; }
+      if (e.key === 'F12') { e.preventDefault(); handleClear(); return; }
+      if (e.key === 'F1')  { e.preventDefault(); handleSubmit(); return; }
       if (e.key === 'Enter') {
         const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName);
         if (!isTyping && mrpJustBlurredRef.current) {
           e.preventDefault();
           const rowId = mrpJustBlurredRef.current;
           mrpJustBlurredRef.current = null;
-          addRow(rowId);
-          return;
+          addRow(rowId); return;
         }
       }
     };
@@ -1133,17 +1104,9 @@ export default function Purchase() {
       if (bills.length > 0 && bills[0].purchase_number) {
         try {
           const lastNum = parseInt(bills[0].purchase_number.replace('PB-', ''));
-          if (!isNaN(lastNum)) {
-            setPurchaseNumber(`PB-${lastNum + 1}`);
-          } else {
-            setPurchaseNumber('PB-1');
-          }
-        } catch {
-          setPurchaseNumber('PB-1');
-        }
-      } else {
-        setPurchaseNumber('PB-1');
-      }
+          setPurchaseNumber(!isNaN(lastNum) ? `PB-${lastNum + 1}` : 'PB-1');
+        } catch { setPurchaseNumber('PB-1'); }
+      } else { setPurchaseNumber('PB-1'); }
     }).catch(() => setPurchaseNumber('PB-1'));
   };
 
@@ -1164,56 +1127,33 @@ export default function Purchase() {
   const selectProduct = (id, product) =>
     setRows(prev => prev.map(r => r._id === id ? {
       ...r, product,
-      current_mrp:  product.batch_mrp
-        ? String(product.batch_mrp)
-        : (product.selling_price ? String(product.selling_price) : '—'),
-      mrp:          product.batch_mrp
-        ? String(product.batch_mrp)
-        : (product.selling_price ? String(product.selling_price) : ''),
+      current_mrp:  product.batch_mrp ? String(product.batch_mrp) : (product.selling_price ? String(product.selling_price) : '—'),
+      mrp:          product.batch_mrp ? String(product.batch_mrp) : (product.selling_price ? String(product.selling_price) : ''),
       selling_unit: product.selling_unit || 'nos',
       tax:          product.tax != null ? String(product.tax) : r.tax,
     } : r));
 
-  const addRow = (afterId) => {
+  const addRow = afterId => {
     const newRow = emptyRow();
     setRows(prev => {
-      if (afterId) {
-        const idx = prev.findIndex(r => r._id === afterId);
-        const next = [...prev];
-        next.splice(idx + 1, 0, newRow);
-        return next;
-      }
+      if (afterId) { const idx = prev.findIndex(r => r._id === afterId); const next = [...prev]; next.splice(idx + 1, 0, newRow); return next; }
       return [...prev, newRow];
     });
     setTimeout(() => {
       const inputs = document.querySelectorAll('td input[placeholder="Scan / search…"]');
-      if (inputs.length > 0) {
-        const lastEmpty = [...inputs].reverse().find(el => !el.value);
-        if (lastEmpty) lastEmpty.focus();
-      }
+      if (inputs.length > 0) { const lastEmpty = [...inputs].reverse().find(el => !el.value); if (lastEmpty) lastEmpty.focus(); }
     }, 80);
   };
   const removeRow = id => setRows(prev => prev.length > 1 ? prev.filter(r => r._id !== id) : prev);
 
-  const getCostPerItem = row => {
-    const qty      = parseFloat(row.quantity) || 0;
-    const totalQty = parseFloat(row.total_qty) || 0;
-    const basePrice = getBasePrice(row);
-    if (!qty || !totalQty || !basePrice) return null;
-    return (qty * basePrice) / totalQty;
-  };
-
   const getRowTotalValue = row => {
-    const qty   = parseFloat(row.quantity) || 0;
-    const price = parseFloat(row.purchase_price) || 0;
-    const tax   = parseFloat(row.tax) || 0;
+    const qty = parseFloat(row.quantity) || 0; const price = parseFloat(row.purchase_price) || 0; const tax = parseFloat(row.tax) || 0;
     if (row.tax_type === 'including') return qty * price;
     return qty * price * (1 + tax / 100);
   };
 
   const getBasePrice = row => {
-    const price = parseFloat(row.purchase_price) || 0;
-    const tax   = parseFloat(row.tax) || 0;
+    const price = parseFloat(row.purchase_price) || 0; const tax = parseFloat(row.tax) || 0;
     if (row.tax_type === 'including') return price / (1 + tax / 100);
     return price;
   };
@@ -1232,21 +1172,8 @@ export default function Purchase() {
       const payload = {
         vendor: selectedVendor, is_paid: isPaid,
         items: rows.map(r => {
-          const qty        = parseFloat(r.quantity);
-          const totalQty   = parseFloat(r.total_qty);
-          const sellingQty = r.purchase_unit === 'case' ? (totalQty / qty) : 1;
-          const basePrice  = getBasePrice(r);
-          return {
-            product:        r.product.id,
-            purchase_unit:  r.purchase_unit,
-            quantity:       qty,
-            purchase_price: parseFloat(basePrice.toFixed(4)),
-            tax:            parseFloat(r.tax) || 0,
-            tax_type:       r.tax_type,
-            mrp:            parseFloat(r.mrp),
-            selling_unit:   r.selling_unit,
-            selling_qty:    sellingQty,
-          };
+          const qty = parseFloat(r.quantity); const totalQty = parseFloat(r.total_qty);
+          return { product: r.product.id, purchase_unit: r.purchase_unit, quantity: qty, purchase_price: parseFloat(getBasePrice(r).toFixed(4)), tax: parseFloat(r.tax) || 0, tax_type: r.tax_type, mrp: parseFloat(r.mrp), selling_unit: r.selling_unit, selling_qty: r.purchase_unit === 'case' ? (totalQty / qty) : 1 };
         }),
       };
       const result = await createPurchaseBill(payload);
@@ -1259,7 +1186,6 @@ export default function Purchase() {
   };
 
   const grandTotal = rows.reduce((s, r) => s + getRowTotalValue(r), 0);
-  const numInputProps = { onKeyDown: noArrow, onWheel: noWheel };
 
   const Fkey = ({ k }) => (
     <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(255,255,255,0.2)', borderRadius: 4, padding: '1px 5px', marginLeft: 6, fontFamily: 'monospace' }}>{k}</span>
@@ -1276,14 +1202,11 @@ export default function Purchase() {
       <div className="page-header">
         <h1>📦 Purchase</h1>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn btn-secondary" onClick={handleClear}
-            style={{ color: 'var(--red)', borderColor: 'var(--red)' }}>
+          <button className="btn btn-secondary" onClick={handleClear} style={{ color: 'var(--red)', borderColor: 'var(--red)' }}>
             🔄 Clear <Fkey k="F12" />
           </button>
-
           {(isAdmin || can('can_access_purchase_return')) && (
-            <button className="btn btn-secondary" onClick={() => setShowPurReturn(true)}
-              style={{ color: 'var(--red)', borderColor: 'var(--red)' }}>↩️ Purchase Return</button>
+            <button className="btn btn-secondary" onClick={() => setShowPurReturn(true)} style={{ color: 'var(--red)', borderColor: 'var(--red)' }}>↩️ Purchase Return</button>
           )}
           {(isAdmin || can('can_access_vendor_master')) && (
             <button className="btn btn-secondary" onClick={() => setShowVendor(true)}>🏪 Vendor Master</button>
@@ -1302,31 +1225,21 @@ export default function Purchase() {
               {purchaseNumber}
             </div>
           </div>
-
           <div className="form-group" style={{ margin: 0, flex: 1, minWidth: 200 }}>
-            <label>
-              Vendor *
-              {!selectedVendor && <span style={{ color: 'var(--red)', marginLeft: 8, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— required</span>}
-            </label>
-            <select value={selectedVendor} onChange={e => setSelectedVendor(e.target.value)}
-              style={{ borderColor: !selectedVendor ? 'var(--red)' : undefined }}>
+            <label>Vendor *{!selectedVendor && <span style={{ color: 'var(--red)', marginLeft: 8, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— required</span>}</label>
+            <select value={selectedVendor} onChange={e => setSelectedVendor(e.target.value)} style={{ borderColor: !selectedVendor ? 'var(--red)' : undefined }}>
               <option value="">— Select vendor —</option>
-              {vendors.filter(v => v.is_active).map(v => (
-                <option key={v.id} value={v.id}>{v.name}{v.phone ? ` · ${v.phone}` : ''}</option>
-              ))}
+              {vendors.filter(v => v.is_active).map(v => <option key={v.id} value={v.id}>{v.name}{v.phone ? ` · ${v.phone}` : ''}</option>)}
             </select>
           </div>
-
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 2 }}>
             <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)' }}>Payment Status *</div>
             <div style={{ display: 'flex', gap: 10 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 16px', borderRadius: 'var(--radius)', border: `1px solid ${isPaid ? 'var(--green)' : 'var(--border)'}`, background: isPaid ? 'var(--green-dim)' : 'var(--bg3)', color: isPaid ? 'var(--green)' : 'var(--text2)', fontWeight: isPaid ? 700 : 400, transition: 'all 0.15s' }}>
-                <input type="radio" name="payment_status" checked={isPaid} onChange={() => setIsPaid(true)} style={{ width: 'auto', accentColor: 'var(--green)' }} />
-                ✅ Paid
+                <input type="radio" name="payment_status" checked={isPaid} onChange={() => setIsPaid(true)} style={{ width: 'auto', accentColor: 'var(--green)' }} />✅ Paid
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 16px', borderRadius: 'var(--radius)', border: `1px solid ${!isPaid ? 'var(--yellow)' : 'var(--border)'}`, background: !isPaid ? 'rgba(234,179,8,0.12)' : 'var(--bg3)', color: !isPaid ? 'var(--yellow)' : 'var(--text2)', fontWeight: !isPaid ? 700 : 400, transition: 'all 0.15s' }}>
-                <input type="radio" name="payment_status" checked={!isPaid} onChange={() => setIsPaid(false)} style={{ width: 'auto', accentColor: 'var(--yellow)' }} />
-                ⏳ Not Paid
+                <input type="radio" name="payment_status" checked={!isPaid} onChange={() => setIsPaid(false)} style={{ width: 'auto', accentColor: 'var(--yellow)' }} />⏳ Not Paid
               </label>
             </div>
           </div>
@@ -1337,118 +1250,64 @@ export default function Purchase() {
         <div style={{ width: '100%' }}>
           <table style={{ width: '100%', tableLayout: 'fixed' }}>
             <colgroup>
-              <col style={{ width: '20%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '8%' }} />
+              <col style={{ width: '20%' }} /><col style={{ width: '8%' }} /><col style={{ width: '7%' }} />
+              <col style={{ width: '9%' }} /><col style={{ width: '11%' }} /><col style={{ width: '11%' }} />
+              <col style={{ width: '9%' }} /><col style={{ width: '9%' }} /><col style={{ width: '8%' }} /><col style={{ width: '8%' }} />
             </colgroup>
             <thead>
               <tr>
-                <th>Product</th>
-                <th>Pur. Unit</th>
-                <th>Qty *</th>
+                <th>Product</th><th>Pur. Unit</th><th>Qty *</th>
                 <th>Total Qty *<div style={{ fontSize: 9, fontWeight: 400, color: 'var(--text3)' }}>auto nos/kg</div></th>
-                <th>Price (₹) *</th>
-                <th>Tax (%)</th>
-                <th>Curr. MRP</th>
-                <th>New MRP *</th>
-                <th>Sell Unit</th>
-                <th>Total (₹)</th>
+                <th>Price (₹) *</th><th>Tax (%)</th><th>Curr. MRP</th><th>New MRP *</th><th>Sell Unit</th><th>Total (₹)</th>
               </tr>
             </thead>
             <tbody>
               {rows.map(row => {
                 const rowTotal   = getRowTotalValue(row);
                 const isCase     = row.purchase_unit === 'case';
-                const mrpChanged = row.current_mrp && row.mrp && row.current_mrp !== '—' &&
-                                   parseFloat(row.mrp) !== parseFloat(row.current_mrp);
-
-                const mkKey = (e, col) => {
-                  noArrow(e);
-                  if (e.key === 'Enter') { e.preventDefault(); nextFocus(row._id, col); }
-                };
+                const mrpChanged = row.current_mrp && row.mrp && row.current_mrp !== '—' && parseFloat(row.mrp) !== parseFloat(row.current_mrp);
+                const mkKey = (e, col) => { noArrow(e); if (e.key === 'Enter') { e.preventDefault(); nextFocus(row._id, col); } };
 
                 return (
                   <tr key={row._id}>
                     <td style={{ padding: '6px 8px' }}>
-                      <ProductSearchCell
-                        value={row.product}
-                        onSelect={p => selectProduct(row._id, p)}
-                        onEnterNext={() => focusCell(row._id, 'unit')}
-                      />
+                      <ProductSearchCell value={row.product} onSelect={p => selectProduct(row._id, p)} onEnterNext={() => focusCell(row._id, 'unit')} />
                       {row.product && (
                         <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', marginTop: 2 }}>
                           {row.product.barcode}
-                          {row.product.multi_batch && (
-                            <span style={{ marginLeft: 6, color: 'var(--accent)', fontWeight: 700 }}>
-                              · Batch MRP ₹{parseFloat(row.product.batch_mrp || row.product.selling_price).toFixed(2)}
-                            </span>
-                          )}
+                          {row.product.multi_batch && <span style={{ marginLeft: 6, color: 'var(--accent)', fontWeight: 700 }}>· Batch MRP ₹{parseFloat(row.product.batch_mrp || row.product.selling_price).toFixed(2)}</span>}
                         </div>
                       )}
                     </td>
-
                     <td style={{ padding: '6px 4px' }}>
-                      <select
-                        ref={el => registerRef(row._id, 'unit', el)}
-                        value={row.purchase_unit}
+                      <select ref={el => registerRef(row._id, 'unit', el)} value={row.purchase_unit}
                         onChange={e => updateRow(row._id, 'purchase_unit', e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); focusCell(row._id, 'qty'); } }}
-                        style={{ fontSize: 12, padding: '5px 4px', width: '100%' }}
-                      >
+                        style={{ fontSize: 12, padding: '5px 4px', width: '100%' }}>
                         {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                       </select>
                     </td>
-
                     <td style={{ padding: '6px 4px' }}>
-                      <input type="number" value={row.quantity}
-                        ref={el => registerRef(row._id, 'qty', el)}
-                        onChange={e => updateRow(row._id, 'quantity', e.target.value)}
-                        onKeyDown={e => mkKey(e, 'qty')}
-                        onWheel={noWheel}
-                        placeholder="0" min="0" step="0.001"
-                        style={{ fontSize: 13, padding: '5px 4px', textAlign: 'right', width: '100%' }} />
+                      <input type="number" value={row.quantity} ref={el => registerRef(row._id, 'qty', el)}
+                        onChange={e => updateRow(row._id, 'quantity', e.target.value)} onKeyDown={e => mkKey(e, 'qty')} onWheel={noWheel}
+                        placeholder="0" min="0" step="0.001" style={{ fontSize: 13, padding: '5px 4px', textAlign: 'right', width: '100%' }} />
                     </td>
-
                     <td style={{ padding: '6px 4px' }}>
-                      <input type="number" value={row.total_qty}
-                        ref={el => registerRef(row._id, 'totalqty', el)}
+                      <input type="number" value={row.total_qty} ref={el => registerRef(row._id, 'totalqty', el)}
                         onChange={e => isCase ? updateRow(row._id, 'total_qty', e.target.value) : undefined}
-                        onKeyDown={e => mkKey(e, 'totalqty')}
-                        onWheel={noWheel}
-                        readOnly={!isCase}
+                        onKeyDown={e => mkKey(e, 'totalqty')} onWheel={noWheel} readOnly={!isCase}
                         placeholder={isCase ? 'total' : 'auto'} min="0" step="0.001"
-                        style={{
-                          fontSize: 12, padding: '5px 4px', textAlign: 'right', width: '100%',
-                          opacity: !isCase ? 0.5 : 1, background: !isCase ? 'var(--bg2)' : undefined,
-                          borderColor: isCase ? 'var(--blue)' : undefined,
-                        }} />
+                        style={{ fontSize: 12, padding: '5px 4px', textAlign: 'right', width: '100%', opacity: !isCase ? 0.5 : 1, background: !isCase ? 'var(--bg2)' : undefined, borderColor: isCase ? 'var(--blue)' : undefined }} />
                     </td>
-
                     <td style={{ padding: '6px 4px' }}>
-                      <input type="number" value={row.purchase_price}
-                        ref={el => registerRef(row._id, 'price', el)}
-                        onChange={e => updateRow(row._id, 'purchase_price', e.target.value)}
-                        onKeyDown={e => mkKey(e, 'price')}
-                        onWheel={noWheel}
-                        placeholder="0.00" min="0" step="0.01"
-                        style={{ fontSize: 13, padding: '5px 4px', textAlign: 'right', width: '100%' }} />
+                      <input type="number" value={row.purchase_price} ref={el => registerRef(row._id, 'price', el)}
+                        onChange={e => updateRow(row._id, 'purchase_price', e.target.value)} onKeyDown={e => mkKey(e, 'price')} onWheel={noWheel}
+                        placeholder="0.00" min="0" step="0.01" style={{ fontSize: 13, padding: '5px 4px', textAlign: 'right', width: '100%' }} />
                     </td>
-
                     <td style={{ padding: '6px 4px' }}>
-                      <input type="number" value={row.tax}
-                        ref={el => registerRef(row._id, 'tax', el)}
-                        onChange={e => updateRow(row._id, 'tax', e.target.value)}
-                        onKeyDown={e => mkKey(e, 'tax')}
-                        onWheel={noWheel}
-                        placeholder="0" min="0" step="0.01"
-                        style={{ fontSize: 12, padding: '5px 4px', textAlign: 'right', width: '100%', marginBottom: 3 }} />
+                      <input type="number" value={row.tax} ref={el => registerRef(row._id, 'tax', el)}
+                        onChange={e => updateRow(row._id, 'tax', e.target.value)} onKeyDown={e => mkKey(e, 'tax')} onWheel={noWheel}
+                        placeholder="0" min="0" step="0.01" style={{ fontSize: 12, padding: '5px 4px', textAlign: 'right', width: '100%', marginBottom: 3 }} />
                       <div style={{ display: 'flex', gap: 2 }}>
                         {['excluding', 'including'].map(tt => (
                           <button key={tt} onClick={() => updateRow(row._id, 'tax_type', tt)}
@@ -1458,43 +1317,32 @@ export default function Purchase() {
                         ))}
                       </div>
                       {row.tax_type === 'including' && parseFloat(row.tax) > 0 && parseFloat(row.purchase_price) > 0 && (
-                        <div style={{ fontSize: 9, color: 'var(--accent)', marginTop: 1, textAlign: 'right' }}>
-                          Base: {fmt(getBasePrice(row))}
-                        </div>
+                        <div style={{ fontSize: 9, color: 'var(--accent)', marginTop: 1, textAlign: 'right' }}>Base: {fmt(getBasePrice(row))}</div>
                       )}
                     </td>
-
                     <td style={{ padding: '6px 4px' }}>
                       <div style={{ padding: '5px 6px', background: 'var(--bg2)', borderRadius: 'var(--radius)', fontSize: 12, fontFamily: 'var(--mono)', color: 'var(--text3)', border: '1px solid var(--border)', textAlign: 'right' }}>
                         {row.current_mrp || '—'}
                       </div>
                     </td>
-
                     <td style={{ padding: '6px 4px' }}>
-                      <input type="number" value={row.mrp}
-                        ref={el => registerRef(row._id, 'mrp', el)}
-                        onChange={e => updateRow(row._id, 'mrp', e.target.value)}
-                        onKeyDown={e => mkKey(e, 'mrp')}
-                        onWheel={noWheel}
+                      <input type="number" value={row.mrp} ref={el => registerRef(row._id, 'mrp', el)}
+                        onChange={e => updateRow(row._id, 'mrp', e.target.value)} onKeyDown={e => mkKey(e, 'mrp')} onWheel={noWheel}
                         placeholder="0.00" min="0" step="0.01"
                         style={{ fontSize: 13, padding: '5px 4px', textAlign: 'right', width: '100%', borderColor: mrpChanged ? 'var(--accent)' : undefined, color: mrpChanged ? 'var(--accent)' : undefined }} />
                       {mrpChanged && <div style={{ fontSize: 9, color: 'var(--accent)', marginTop: 1 }}>was ₹{row.current_mrp}</div>}
                     </td>
-
                     <td style={{ padding: '6px 4px' }}>
-                      <select value={row.selling_unit} onChange={e => updateRow(row._id, 'selling_unit', e.target.value)}
-                        style={{ fontSize: 12, padding: '5px 4px', width: '100%' }}>
+                      <select value={row.selling_unit} onChange={e => updateRow(row._id, 'selling_unit', e.target.value)} style={{ fontSize: 12, padding: '5px 4px', width: '100%' }}>
                         {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                       </select>
                     </td>
-
                     <td style={{ padding: '6px 4px' }}>
                       <div style={{ padding: '5px 6px', background: rowTotal>0?'var(--accent-dim)':'var(--bg2)', borderRadius: 'var(--radius)', fontSize: 12, fontFamily: 'var(--mono)', color: rowTotal>0?'var(--accent)':'var(--text3)', border: `1px solid ${rowTotal>0?'var(--accent)':'var(--border)'}`, textAlign: 'right', fontWeight: 700 }}>
                         {rowTotal > 0 ? fmt(rowTotal) : '—'}
                       </div>
                       <button className="btn btn-danger btn-sm" onClick={() => removeRow(row._id)}
-                        style={{ padding: '2px 6px', marginTop: 3, width: '100%' }}
-                        disabled={rows.length === 1}>✕ remove</button>
+                        style={{ padding: '2px 6px', marginTop: 3, width: '100%' }} disabled={rows.length === 1}>✕ remove</button>
                     </td>
                   </tr>
                 );
@@ -1502,7 +1350,6 @@ export default function Purchase() {
             </tbody>
           </table>
         </div>
-
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg2)' }}>
           <button className="btn btn-secondary btn-sm" onClick={() => addRow()}>+ Add Item Row</button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
