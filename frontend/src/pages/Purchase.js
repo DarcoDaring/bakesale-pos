@@ -85,7 +85,7 @@ function VendorMasterModal({ onClose }) {
 }
 
 function VendorFormModal({ vendor, onClose, onSaved }) {
-  const nameRef = useRef();
+  const nameRef  = useRef();
   const phoneRef = useRef();
   const [name, setName]     = useState(vendor?.name  || '');
   const [phone, setPhone]   = useState(vendor?.phone || '');
@@ -111,11 +111,13 @@ function VendorFormModal({ vendor, onClose, onSaved }) {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Vendor Name *</label>
-            <input ref={nameRef} autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Fresh Foods Pvt Ltd"  onKeyDown={e => {   if (e.key === 'Enter') {      e.preventDefault();      phoneRef.current?.focus();    }  }}/>
+            <input ref={nameRef} autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Fresh Foods Pvt Ltd"
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); phoneRef.current?.focus(); } }} />
           </div>
           <div className="form-group">
             <label>Phone (optional)</label>
-           <input ref={phoneRef} value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 9876543210" type="tel" onKeyDown={e => {   if (e.key === 'Enter') {     e.preventDefault();     handleSubmit(e);   } }}/>
+            <input ref={phoneRef} value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 9876543210" type="tel"
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(e); } }} />
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <button type="submit" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} disabled={loading}>
@@ -150,7 +152,6 @@ function ProductMasterModal({ onClose }) {
     } catch { toast.error('Failed to update product'); }
   };
 
-  // ─── CHANGE B: printBarcode now accepts optional expiryDate ──────────────
   const printBarcode = (p, expiryDate = null) => {
     const handleMessage = event => {
       if (event.data?.type === 'BARCODE_SETTINGS_SAVE') {
@@ -168,22 +169,12 @@ function ProductMasterModal({ onClose }) {
       leftOffset:    saved.leftOffset    ?? 0,
       labelWidth:    saved.labelWidth    ?? 50,
       bcHeight:      saved.bcHeight      ?? 50,
-      // CHANGE B: persist includeExpiry and expiryDate in settings
       includeExpiry: saved.includeExpiry ?? false,
       expiryDate:    expiryDate || saved.expiryDate || '',
     };
 
     const win = window.open('', '_blank', 'width=660,height=640');
     if (!win) { toast.error('Popup blocked. Please allow popups.'); return; }
-
-    // CHANGE B: format expiry date for display (DD-MMM-YYYY)
-    const formatExpiry = dateStr => {
-      if (!dateStr) return '';
-      try {
-        const dt = new Date(dateStr + 'T00:00:00');
-        return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-      } catch { return dateStr; }
-    };
 
     win.document.write(`<!DOCTYPE html><html><head>
       <title>Barcode - ${p.name}</title>
@@ -226,8 +217,6 @@ function ProductMasterModal({ onClose }) {
           <div class="ctrl-group"><label>Width (mm)</label><input type="number" id="labelWidth" value="${d.labelWidth}" min="20" max="150" oninput="renderLabels(); markDirty()" /></div>
           <div class="ctrl-group"><label>BC Height</label><input type="number" id="bcHeight" value="${d.bcHeight}" min="20" max="120" oninput="renderLabels(); markDirty()" /></div>
         </div>
-
-        <!-- CHANGE B: Expiry date row -->
         <div class="expiry-row">
           <label class="expiry-label">
             <input type="checkbox" id="includeExpiry" ${d.includeExpiry ? 'checked' : ''}
@@ -240,7 +229,6 @@ function ProductMasterModal({ onClose }) {
               oninput="renderLabels(); markDirty()" />
           </div>
         </div>
-
         <div class="btn-row">
           <button class="btn-print" onclick="saveAndPrint()">🖨️ Save &amp; Print</button>
           <button class="btn-save"  onclick="saveSettings()">💾 Save Settings</button>
@@ -305,24 +293,20 @@ function ProductMasterModal({ onClose }) {
             box.className = 'label-box';
             box.style.width = labelWidth + 'mm';
 
-            // Product name
             const nameDiv = document.createElement('div');
             nameDiv.className = 'prod-name';
             nameDiv.textContent = name;
             box.appendChild(nameDiv);
 
-            // Barcode SVG
             const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svgEl.setAttribute('id', 'bc' + i);
             box.appendChild(svgEl);
 
-            // Price
             const priceDiv = document.createElement('div');
             priceDiv.className = 'price';
             priceDiv.textContent = price;
             box.appendChild(priceDiv);
 
-            // CHANGE B: Expiry date line (only if checked and date is set)
             if (includeExpiry && expiryDate) {
               const expiryDiv = document.createElement('div');
               expiryDiv.className = 'expiry-print';
@@ -406,107 +390,238 @@ function ProductMasterModal({ onClose }) {
   );
 }
 
-function ProductFormModal({ product, onClose, onSaved }) {
-  const nameRef = useRef();
-  const barcodeRef = useRef();
-  const [form, setForm] = useState({ name: product?.name || '', barcode: product?.barcode || '', auto_barcode: false });
-  const [loading, setLoading] = useState(false);
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const isEdit = !!product;
-
-  const handleSubmit = async e => {
-    e.preventDefault();
-    if (!form.name) { toast.error('Product name required'); return; }
-    setLoading(true);
-    try {
-      const payload = { name: form.name };
-      if (!isEdit) {
-        if (!form.auto_barcode && form.barcode) payload.barcode = form.barcode;
-        await createProduct(payload); toast.success('Product created');
-      } else {
-        await updateProduct(product.id, { name: form.name }); toast.success('Product updated');
-      }
-      onSaved(); onClose();
-    } catch (err) { toast.error(err.response?.data?.barcode?.[0] || 'Failed to save product'); }
-    finally { setLoading(false); }
-  };
+// ─── Barcode Warning Dialog ───────────────────────────────────────────────────
+function BarcodeWarningDialog({ onConfirm, onCancel }) {
+  // Focus the OK button on mount; handle Enter/Escape globally
+  const okRef = useRef();
+  useEffect(() => {
+    okRef.current?.focus();
+    const handler = e => {
+      if (e.key === 'Enter')  { e.preventDefault(); onConfirm(); }
+      if (e.key === 'Escape') { e.preventDefault(); onCancel();  }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onConfirm, onCancel]);
 
   return (
-    <div className="modal-overlay">
-      <div className="modal" style={{ maxWidth: 420 }}>
-        <h2>{isEdit ? '✏️ Edit Product' : '+ Add Product'}</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Product Name *</label>
-            <input
-              ref={nameRef}
-              autoFocus
-              value={form.name}
-              onChange={e => set('name', e.target.value)}
-              placeholder="e.g. Chocolate Cake"
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
+    <div className="modal-overlay" style={{ zIndex: 9999 }}>
+      <div className="modal" style={{ maxWidth: 380, textAlign: 'center' }}>
+        {/* Icon */}
+        <div style={{
+          width: 60, height: 60, borderRadius: '50%',
+          background: 'rgba(234,179,8,0.15)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 14px',
+        }}>
+          <span style={{ fontSize: 28 }}>⚠️</span>
+        </div>
 
-                  // If barcode field is visible → go there
-                  if (!form.auto_barcode) {
-                    barcodeRef.current?.focus();
-                  } else {
-                    // If auto barcode → submit directly
-                    handleSubmit(e);
-                  }
-                }
-              }}
-            />
-          </div>
-          {!isEdit && (
-            <>
-              <div className="form-group">
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, textTransform: 'none', letterSpacing: 0 }}>
-                  <input type="checkbox" checked={form.auto_barcode} onChange={e => set('auto_barcode', e.target.checked)} style={{ width: 'auto' }} />
-                  Auto-generate Barcode
-                </label>
-              </div>
-              {!form.auto_barcode && (
-                <div className="form-group">
-                  <label>Barcode (scan or enter manually)</label>
-                  <input
-                    ref={barcodeRef}
-                    value={form.barcode}
-                    onChange={e => set('barcode', e.target.value)}
-                    placeholder="Scan barcode here…"
-                    style={{ fontFamily: 'var(--mono)' }}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleSubmit(e);
-                      }
-                    }}
-                  />
-                </div>
-              )}
-            </>
-          )}
-          {isEdit && (
-            <div className="form-group">
-              <label>Barcode</label>
-              <input value={form.barcode} readOnly style={{ fontFamily: 'var(--mono)', opacity: 0.6, cursor: 'not-allowed' }} />
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-            <button type="submit" className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} disabled={loading}>
-              {loading ? 'Saving…' : isEdit ? '✓ Update' : '✓ Create'}
-            </button>
-            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          </div>
-        </form>
+        <h3 style={{ margin: '0 0 8px', fontSize: 16, color: 'var(--text)' }}>
+          Barcode Not Entered
+        </h3>
+        <p style={{
+          margin: '0 0 20px',
+          fontSize: 13,
+          color: 'var(--text3)',
+          lineHeight: 1.6,
+        }}>
+          No barcode was entered. A custom barcode will be
+          auto-generated for this product.
+        </p>
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            ref={okRef}
+            className="btn btn-primary"
+            style={{ flex: 1, justifyContent: 'center' }}
+            onClick={onConfirm}
+          >
+            ✓ OK, Create
+            <span style={{
+              fontSize: 10, fontWeight: 700,
+              background: 'rgba(255,255,255,0.2)',
+              borderRadius: 4, padding: '1px 5px',
+              marginLeft: 6, fontFamily: 'monospace',
+            }}>Enter</span>
+          </button>
+          <button
+            className="btn btn-secondary"
+            style={{ flex: 1, justifyContent: 'center' }}
+            onClick={onCancel}
+          >
+            Cancel
+            <span style={{
+              fontSize: 10,
+              background: 'rgba(255,255,255,0.1)',
+              borderRadius: 4, padding: '1px 5px',
+              marginLeft: 6, fontFamily: 'monospace',
+              color: 'var(--text3)',
+            }}>Esc</span>
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
+// ─── Product Form Modal ───────────────────────────────────────────────────────
+function ProductFormModal({ product, onClose, onSaved }) {
+  const nameRef    = useRef();
+  const barcodeRef = useRef();
+  const [form, setForm] = useState({
+    name:         product?.name    || '',
+    barcode:      product?.barcode || '',
+    auto_barcode: false,
+  });
+  const [loading,            setLoading]            = useState(false);
+  const [showBarcodeWarning, setShowBarcodeWarning] = useState(false);
+  const set    = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const isEdit = !!product;
+
+  // The actual API call — called either directly or after warning confirmation
+  const doCreate = useCallback(async () => {
+    setLoading(true);
+    try {
+      const payload = { name: form.name };
+      if (!form.auto_barcode && form.barcode.trim()) payload.barcode = form.barcode.trim();
+      await createProduct(payload);
+      toast.success('Product created');
+      onSaved(); onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.barcode?.[0] || 'Failed to save product');
+    } finally {
+      setLoading(false);
+    }
+  }, [form, onSaved, onClose]);
+
+  const handleSubmit = async e => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!form.name.trim()) { toast.error('Product name required'); return; }
+
+    if (isEdit) {
+      setLoading(true);
+      try {
+        await updateProduct(product.id, { name: form.name });
+        toast.success('Product updated');
+        onSaved(); onClose();
+      } catch { toast.error('Failed to save product'); }
+      finally { setLoading(false); }
+      return;
+    }
+
+    // New product: no barcode entered and not auto → show warning
+    if (!form.auto_barcode && !form.barcode.trim()) {
+      setShowBarcodeWarning(true);
+      return;
+    }
+
+    await doCreate();
+  };
+
+  return (
+    <>
+      <div className="modal-overlay">
+        <div className="modal" style={{ maxWidth: 420 }}>
+          <h2>{isEdit ? '✏️ Edit Product' : '+ Add Product'}</h2>
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label>Product Name *</label>
+              <input
+                ref={nameRef}
+                autoFocus
+                value={form.name}
+                onChange={e => set('name', e.target.value)}
+                placeholder="e.g. Chocolate Cake"
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (!isEdit && !form.auto_barcode) {
+                      barcodeRef.current?.focus();
+                    } else {
+                      handleSubmit(e);
+                    }
+                  }
+                }}
+              />
+            </div>
+
+            {!isEdit && (
+              <>
+                <div className="form-group">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, textTransform: 'none', letterSpacing: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={form.auto_barcode}
+                      onChange={e => set('auto_barcode', e.target.checked)}
+                      style={{ width: 'auto' }}
+                    />
+                    Auto-generate Barcode
+                  </label>
+                </div>
+
+                {!form.auto_barcode && (
+                  <div className="form-group">
+                    <label>Barcode (scan or enter manually)</label>
+                    <input
+                      ref={barcodeRef}
+                      value={form.barcode}
+                      onChange={e => set('barcode', e.target.value)}
+                      placeholder="Scan barcode here…"
+                      style={{ fontFamily: 'var(--mono)' }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSubmit(e);
+                        }
+                      }}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
+            {isEdit && (
+              <div className="form-group">
+                <label>Barcode</label>
+                <input
+                  value={form.barcode}
+                  readOnly
+                  style={{ fontFamily: 'var(--mono)', opacity: 0.6, cursor: 'not-allowed' }}
+                />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                style={{ flex: 1, justifyContent: 'center' }}
+                disabled={loading}
+              >
+                {loading ? 'Saving…' : isEdit ? '✓ Update' : '✓ Create'}
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={onClose}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {/* Barcode warning dialog — rendered on top */}
+      {showBarcodeWarning && (
+        <BarcodeWarningDialog
+          onConfirm={() => { setShowBarcodeWarning(false); doCreate(); }}
+          onCancel={() => setShowBarcodeWarning(false)}
+        />
+      )}
+    </>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// PurchaseReturnModal — unchanged
+// PurchaseReturnModal
 // ─────────────────────────────────────────────────────────────────────────────
 function PurchaseReturnModal({ onClose }) {
   const [vendors,      setVendors]      = useState([]);
@@ -816,7 +931,7 @@ function PurchaseReturnModal({ onClose }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ProductSearchCell — unchanged
+// ProductSearchCell
 // ─────────────────────────────────────────────────────────────────────────────
 function ProductSearchCell({ value, onSelect, onEnterNext }) {
   const [query,    setQuery]    = useState(value?.name || '');
@@ -972,13 +1087,10 @@ export default function Purchase() {
     }
   };
 
-  // ─── CHANGE A: handleClear — resets all purchase form state ───────────────
   const handleClear = useCallback(() => {
     setRows([emptyRow()]);
     setSelectedVendor('');
     setIsPaid(false);
-    
-    // Refresh data after clearing
     refreshPurchaseNumber();
     refreshVendors();
   }, []);
@@ -987,7 +1099,6 @@ export default function Purchase() {
     const handleKey = e => {
       if (showProduct || showVendor || showPurReturn) return;
 
-      // ─── CHANGE A: F12 clears form ────────────────────────────────────────
       if (e.key === 'F12') {
         e.preventDefault();
         handleClear();
@@ -1113,7 +1224,7 @@ export default function Purchase() {
       if (!row.product)        { toast.error('Select a product for each row'); return; }
       if (!row.quantity)       { toast.error('Enter quantity for each row'); return; }
       if (!row.purchase_price) { toast.error('Enter purchase price for each row'); return; }
-      if (!row.mrp || parseFloat(row.mrp) <= 0) {  toast.error('Enter MRP for each row');  return;}
+      if (!row.mrp || parseFloat(row.mrp) <= 0) { toast.error('Enter MRP for each row'); return; }
       if (!row.total_qty || parseFloat(row.total_qty) <= 0) { toast.error('Enter total qty for each row'); return; }
     }
     setLoading(true);
@@ -1141,7 +1252,6 @@ export default function Purchase() {
       const result = await createPurchaseBill(payload);
       const assignedNumber = result?.data?.purchase_number || purchaseNumber;
       toast.success(`Purchase ${assignedNumber} recorded! Payment: ${isPaid ? 'Paid ✅' : 'Not Paid ⏳'}`);
-      // CHANGE A: after successful submit, also clear the form cleanly
       setRows([emptyRow()]); setSelectedVendor(''); setIsPaid(false);
       refreshPurchaseNumber();
     } catch (err) { toast.error(err.response?.data?.detail || 'Failed to record purchase'); }
@@ -1151,7 +1261,6 @@ export default function Purchase() {
   const grandTotal = rows.reduce((s, r) => s + getRowTotalValue(r), 0);
   const numInputProps = { onKeyDown: noArrow, onWheel: noWheel };
 
-  // Fkey badge helper
   const Fkey = ({ k }) => (
     <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(255,255,255,0.2)', borderRadius: 4, padding: '1px 5px', marginLeft: 6, fontFamily: 'monospace' }}>{k}</span>
   );
@@ -1167,12 +1276,11 @@ export default function Purchase() {
       <div className="page-header">
         <h1>📦 Purchase</h1>
         <div style={{ display: 'flex', gap: 10 }}>
-          {/* ─── CHANGE A: Clear button with F12 shortcut ─────────────────── */}
           <button className="btn btn-secondary" onClick={handleClear}
             style={{ color: 'var(--red)', borderColor: 'var(--red)' }}>
             🔄 Clear <Fkey k="F12" />
           </button>
-          
+
           {(isAdmin || can('can_access_purchase_return')) && (
             <button className="btn btn-secondary" onClick={() => setShowPurReturn(true)}
               style={{ color: 'var(--red)', borderColor: 'var(--red)' }}>↩️ Purchase Return</button>
