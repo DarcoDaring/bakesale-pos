@@ -20,34 +20,8 @@ const payLabel = {
   cash_card: '💵+💳 Cash & Card', cash_upi: '💵+📱 Cash & UPI',
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FIX: Cache-busting wrapper
-//
-// WHY THE BUG HAPPENED:
-//   Browsers automatically cache HTTP GET responses. When you searched for
-//   the same product name a second time (after restocking), the browser
-//   returned the *old cached response* where stock_quantity was still 0.
-//   The filter `parseFloat(p.stock_quantity) > 0` correctly removed that item
-//   — but on stale data. Before the filter existed, you'd still see the item
-//   (with 0 stock); after adding the filter it became completely invisible.
-//
-// THE FIX:
-//   Every call to searchProducts and getProductByBarcode now passes a unique
-//   `_t` timestamp as a second argument. This makes each URL unique so the
-//   browser never serves a cached copy.
-//
-//   ⚠️  You MUST also update ../services/api.js so that searchProducts and
-//   getProductByBarcode forward the _t param as a query string, e.g.:
-//
-//     export const searchProducts = (q, extra = {}) =>
-//       axios.get('/api/products/search/', { params: { q, ...extra } });
-//
-//     export const getProductByBarcode = (barcode, extra = {}) =>
-//       axios.get('/api/products/barcode/', { params: { barcode, ...extra } });
-//
-// ─────────────────────────────────────────────────────────────────────────────
-const freshSearch  = (q)        => searchProducts(q,       { _t: Date.now() });
-const freshBarcode = (barcode)  => getProductByBarcode(barcode, { _t: Date.now() });
+const freshSearch  = (q)       => searchProducts(q,       { _t: Date.now() });
+const freshBarcode = (barcode) => getProductByBarcode(barcode, { _t: Date.now() });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SearchBar
@@ -66,7 +40,6 @@ function SearchBar({ onAdd, focusTrigger = 0 }) {
   resultsRef.current = results;
   const dropdownRef = useRef();
 
-  // Auto-scroll highlighted item into centre of dropdown
   useEffect(() => {
     const container = dropdownRef.current;
     if (!container) return;
@@ -81,13 +54,11 @@ function SearchBar({ onAdd, focusTrigger = 0 }) {
     if (focusTrigger > 0) inputRef.current?.focus();
   }, [focusTrigger]);
 
-  // FIX: uses freshSearch instead of searchProducts directly
   const doSearch = useCallback(async q => {
     if (!q.trim()) { setResults([]); setHighlighted(-1); return; }
     setSearching(true);
     try {
       const { data } = await freshSearch(q);
-      // Only show in-stock items in the sale search
       const inStock = data.filter(p => parseFloat(p.stock_quantity) > 0);
       setResults(inStock); setHighlighted(-1);
     } catch { setResults([]); }
@@ -108,8 +79,6 @@ function SearchBar({ onAdd, focusTrigger = 0 }) {
     setPendingProd(p);
     setPendingQty('');
     setTimeout(() => qtyRef.current?.focus(), 50);
-
-
   }, []);
 
   const confirmAdd = useCallback(() => {
@@ -139,7 +108,6 @@ function SearchBar({ onAdd, focusTrigger = 0 }) {
       if (cur.length > 1)   { stageProd(cur[0]); return; }
       const q = query.trim(); if (!q) return;
       try {
-        // FIX: uses freshBarcode to bypass cache
         const { data } = await freshBarcode(q);
         const rows = Array.isArray(data) ? data : [data];
         const inStock = rows.filter(p => parseFloat(p.stock_quantity) > 0);
@@ -210,7 +178,6 @@ function SearchBar({ onAdd, focusTrigger = 0 }) {
                     </td>
                     <td style={{ color: 'var(--accent)', fontWeight: 600 }}>₹{parseFloat(p.selling_price).toFixed(2)}</td>
                     <td>
-                      {/* All results here are in-stock (filtered above) */}
                       <span className="badge badge-green">{parseFloat(p.stock_quantity).toFixed(p.selling_unit === 'kg' ? 3 : 0)} {p.selling_unit || 'nos'}</span>
                     </td>
                   </tr>
@@ -515,6 +482,11 @@ function ViewBillsModal({ onClose }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ItemReturnModal
+// BUG FIXES:
+//  1. Date filter: pass returnDate as date_to to loadBills → backend filters correctly
+//  2. Payment: only customer_return lines count toward refund amount & payment UI
+//     damaged/expired lines only adjust stock, no payment involved
+//  3. F1 shortcut added to trigger handleConfirm
 // ─────────────────────────────────────────────────────────────────────────────
 function ItemReturnModal({ onClose }) {
   const [returnDate,  setReturnDate]  = useState(new Date().toISOString().split('T')[0]);
@@ -536,7 +508,6 @@ function ItemReturnModal({ onClose }) {
   resultsRef.current  = results;
   const dropdownRef   = useRef();
 
-  // Auto-scroll highlighted item into centre of dropdown
   useEffect(() => {
     const container = dropdownRef.current;
     if (!container) return;
@@ -551,26 +522,27 @@ function ItemReturnModal({ onClose }) {
     setTimeout(() => dateRef.current?.focus(), 80);
   }, []);
 
+  // ── FIX 3: F1 shortcut for confirm ──────────────────────────────────────
   useEffect(() => {
     const handleKey = e => {
       if (e.key === 'Escape' && !billsModal) { e.preventDefault(); onClose(); }
+      if (e.key === 'F1' && !billsModal) { e.preventDefault(); handleConfirm(); }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [billsModal]);
+  }, [billsModal, lines, payType, cashAmt, creditAmt, creditType]);
 
-  const hasCustomerReturn = lines.some(l => l.return_type === 'customer_return');
-  const customerReturnTotal = lines
-    .filter(l => l.return_type === 'customer_return')
-    .reduce((s, l) => s + l.price * l.qty, 0);
+  // ── FIX 2: Only customer_return lines produce a refund payment ──────────
+  const customerReturnLines = lines.filter(l => l.return_type === 'customer_return');
+  const hasCustomerReturn   = customerReturnLines.length > 0;
+  const customerReturnTotal = customerReturnLines.reduce((s, l) => s + l.price * l.qty, 0);
 
-  // FIX: uses freshSearch — returns show all stock levels (including 0) intentionally
   const doSearch = async q => {
     if (!q.trim()) { setResults([]); return; }
     setSearching(true);
     try {
       const { data } = await freshSearch(q);
-      setResults(data); // returns show all items including out-of-stock
+      setResults(data);
     } catch { setResults([]); }
     finally { setSearching(false); }
   };
@@ -594,7 +566,6 @@ function ItemReturnModal({ onClose }) {
       if (cur.length > 0) { addProduct(cur[0]); return; }
       if (!query.trim()) return;
       try {
-        // FIX: uses freshBarcode
         const { data } = await freshBarcode(query.trim());
         const rows = Array.isArray(data) ? data : [data];
         if (rows.length > 0) addProduct(rows[0]);
@@ -606,16 +577,16 @@ function ItemReturnModal({ onClose }) {
   const addProduct = p => {
     setQuery(''); setResults([]); setHighlighted(-1);
     const newLine = {
-      _key:        `${p.id}_${Date.now()}`,
-      product_id:  p.id,
-      product_name: p.name,
-      barcode:     p.barcode,
-      price:       parseFloat(p.selling_price),
-      qty:         1,
-      return_type: 'customer_return',
-      sale_bill:   null,
+      _key:             `${p.id}_${Date.now()}`,
+      product_id:       p.id,
+      product_name:     p.name,
+      barcode:          p.barcode,
+      price:            parseFloat(p.selling_price),
+      qty:              1,
+      return_type:      'customer_return',
+      sale_bill:        null,
       sale_bill_number: null,
-      also_damaged: false,
+      also_damaged:     false,
     };
     setLines(prev => [...prev, newLine]);
     setTimeout(() => searchRef.current?.focus(), 50);
@@ -626,10 +597,11 @@ function ItemReturnModal({ onClose }) {
   };
   const removeLine = key => setLines(prev => prev.filter(l => l._key !== key));
 
+  // ── FIX 1: Pass returnDate as date_to so backend filters bills by date ──
   const loadBills = async (lineKey, productId, qty) => {
     try {
       const params = { product_id: productId, qty };
-      if (returnDate) params.date = returnDate;
+      if (returnDate) params.date_to = returnDate;
       const { data } = await getBillsWithProduct(params);
       if (data.length === 0) { toast('No bills found with this item and qty', { icon: 'ℹ️' }); return; }
       setBillsModal({ lineKey, bills: data });
@@ -644,19 +616,23 @@ function ItemReturnModal({ onClose }) {
 
   const handleCashChange   = e => { const c = e.target.value; setCashAmt(c);   setCreditAmt((customerReturnTotal-(parseFloat(c)||0)) > 0 ? (customerReturnTotal-(parseFloat(c)||0)).toFixed(2) : '0.00'); };
   const handleCreditChange = e => { const k = e.target.value; setCreditAmt(k); setCashAmt((customerReturnTotal-(parseFloat(k)||0)) > 0 ? (customerReturnTotal-(parseFloat(k)||0)).toFixed(2) : '0.00'); };
-  const cashVal = parseFloat(cashAmt)||0, creditVal = parseFloat(creditAmt)||0;
-  const splitOk = Math.abs(cashVal + creditVal - customerReturnTotal) < 0.01;
-  
+  const cashVal  = parseFloat(cashAmt)   || 0;
+  const creditVal= parseFloat(creditAmt) || 0;
+  const splitOk  = Math.abs(cashVal + creditVal - customerReturnTotal) < 0.01;
+
   const handleConfirm = async () => {
     if (lines.length === 0) { toast.error('Add at least one item'); return; }
     for (const l of lines) {
       if (!l.qty || l.qty <= 0) { toast.error(`Enter valid qty for ${l.product_name}`); return; }
+      // Only customer_return requires a bill selection
       if (l.return_type === 'customer_return' && !l.sale_bill) {
         toast.error(`Select a bill for customer return: ${l.product_name}`);
         return;
       }
     }
 
+    // ── FIX 2: Payment amounts only apply to customer_return lines ──────────
+    // damaged / expired lines have no payment — they only adjust stock.
     let payment_type = 'cash', cash_amount = 0, card_amount = 0, upi_amount = 0;
     if (hasCustomerReturn) {
       payment_type = payType;
@@ -671,6 +647,8 @@ function ItemReturnModal({ onClose }) {
         upi_amount   = creditType === 'upi'  ? creditVal : 0;
       }
     }
+    // If there are ONLY damaged/expired lines (no customer_return at all),
+    // send zero payment — no money changes hands.
 
     setLoading(true);
     try {
@@ -683,6 +661,7 @@ function ItemReturnModal({ onClose }) {
           return_type: l.return_type,
           sale_bill:   l.sale_bill || null,
         });
+        // If customer_return AND also_damaged, add a second damaged line (stock only, no payment)
         if (l.return_type === 'customer_return' && l.also_damaged) {
           expandedLines.push({
             product:     l.product_id,
@@ -696,7 +675,10 @@ function ItemReturnModal({ onClose }) {
 
       const payload = {
         lines: expandedLines,
-        payment_type, cash_amount, card_amount, upi_amount,
+        payment_type,
+        cash_amount,
+        card_amount,
+        upi_amount,
       };
       const { data } = await createItemReturn(payload);
       toast.success(`Item Return ${data.return_number} processed!`);
@@ -704,6 +686,10 @@ function ItemReturnModal({ onClose }) {
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to process return'); }
     finally { setLoading(false); }
   };
+
+  const Fkey = ({ k }) => (
+    <span style={{ fontSize: 9, fontWeight: 700, background: 'rgba(255,255,255,0.2)', borderRadius: 3, padding: '1px 4px', marginLeft: 5, fontFamily: 'monospace' }}>{k}</span>
+  );
 
   return (
     <div className="modal-overlay">
@@ -713,6 +699,7 @@ function ItemReturnModal({ onClose }) {
           <button className="btn btn-secondary btn-sm" onClick={onClose}>✕</button>
         </div>
 
+        {/* Date picker */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12,
           background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
           padding: '10px 14px' }}>
@@ -725,9 +712,10 @@ function ItemReturnModal({ onClose }) {
             onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); searchRef.current?.focus(); } }}
             style={{ width: 180, padding: '6px 10px', fontWeight: 600 }}
           />
-          <span style={{ fontSize: 12, color: 'var(--text3)' }}>Bills will be filtered by this date when searching for the original sale</span>
+          <span style={{ fontSize: 12, color: 'var(--text3)' }}>Bills on or before this date will be shown when finding the original sale</span>
         </div>
 
+        {/* Search */}
         <div style={{ position: 'relative', marginBottom: 12 }}>
           <input
             ref={searchRef}
@@ -765,6 +753,7 @@ function ItemReturnModal({ onClose }) {
           )}
         </div>
 
+        {/* Lines table */}
         <div style={{ flex: 1, overflowY: 'auto', marginBottom: 16 }}>
           {lines.length === 0 ? (
             <div className="empty-state" style={{ padding: '30px 0' }}><div className="icon">↩️</div>Set date above, then search and add items to return</div>
@@ -793,7 +782,11 @@ function ItemReturnModal({ onClose }) {
                     <td>
                       <select value={l.return_type} onChange={e => {
                         updateLine(l._key, 'return_type', e.target.value);
-                        if (e.target.value !== 'customer_return') updateLine(l._key, 'also_damaged', false);
+                        if (e.target.value !== 'customer_return') {
+                          updateLine(l._key, 'also_damaged', false);
+                          updateLine(l._key, 'sale_bill', null);
+                          updateLine(l._key, 'sale_bill_number', null);
+                        }
                       }}
                         style={{ fontSize: 12, padding: '4px 6px' }}>
                         <option value="customer_return">👤 Customer Return</option>
@@ -829,9 +822,17 @@ function ItemReturnModal({ onClose }) {
                             🔍 Find Bill
                           </button>
                         </div>
-                      ) : <span style={{ color: 'var(--text3)', fontSize: 12 }}>—</span>}
+                      ) : (
+                        // FIX 2: damaged/expired shows clearly that no refund applies
+                        <span style={{ color: 'var(--text3)', fontSize: 11 }}>No refund</span>
+                      )}
                     </td>
-                    <td style={{ fontWeight: 700 }}>{fmt(l.price * l.qty)}</td>
+                    <td style={{ fontWeight: 700 }}>
+                      {l.return_type === 'customer_return'
+                        ? fmt(l.price * l.qty)
+                        : <span style={{ color: 'var(--text3)', fontSize: 12 }}>Stock only</span>
+                      }
+                    </td>
                     <td><button className="btn btn-danger btn-sm" onClick={() => removeLine(l._key)}>✕</button></td>
                   </tr>
                 ))}
@@ -840,43 +841,87 @@ function ItemReturnModal({ onClose }) {
           )}
         </div>
 
+        {/* Footer */}
         {lines.length > 0 && (
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+
+            {/* ── FIX 2: Show payment section ONLY when there are customer_return lines ── */}
             {hasCustomerReturn && (
               <>
+                {/* Info box if there are also damaged/expired lines */}
+                {lines.some(l => l.return_type !== 'customer_return') && (
+                  <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 'var(--radius)',
+                    background: 'var(--bg3)', border: '1px solid var(--border)', fontSize: 12, color: 'var(--text3)' }}>
+                    ℹ️ Damaged / expired items only adjust stock — no refund for those lines.
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 12 }}>
-                  <span style={{ color: 'var(--text3)', marginRight: 12 }}>Refund Total:</span>
+                  <span style={{ color: 'var(--text3)', marginRight: 12 }}>Refund Total (customer returns only):</span>
                   <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{fmt(customerReturnTotal)}</span>
                 </div>
 
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 6 }}>Refund Payment Method:</div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    {[{ v: 'cash', label: '💵 Cash', color: 'var(--green)' }, { v: 'card', label: '💳 Card', color: 'var(--blue)' }, { v: 'upi', label: '📱 UPI', color: 'var(--purple)' }, { v: 'split', label: '💵+💳 Split', color: 'var(--yellow)' }].map(p => (
-                      <button key={p.v} onClick={() => setPayType(p.v)} className="btn" style={{ flex: 1, justifyContent: 'center', fontSize: 12, padding: '8px 4px', background: payType===p.v?'rgba(255,255,255,0.1)':'var(--bg3)', color: p.color, border: `1px solid ${payType===p.v?p.color:'var(--border)'}` }}>{p.label}</button>
+                    {[
+                      { v: 'cash',  label: '💵 Cash',    color: 'var(--green)'  },
+                      { v: 'card',  label: '💳 Card',    color: 'var(--blue)'   },
+                      { v: 'upi',   label: '📱 UPI',     color: 'var(--purple)' },
+                      { v: 'split', label: '💵+💳 Split', color: 'var(--yellow)' },
+                    ].map(p => (
+                      <button key={p.v} onClick={() => setPayType(p.v)} className="btn"
+                        style={{ flex: 1, justifyContent: 'center', fontSize: 12, padding: '8px 4px',
+                          background: payType===p.v ? 'rgba(255,255,255,0.1)' : 'var(--bg3)',
+                          color: p.color, border: `1px solid ${payType===p.v ? p.color : 'var(--border)'}` }}>
+                        {p.label}
+                      </button>
                     ))}
                   </div>
                   {payType === 'split' && (
                     <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                      <div className="form-group" style={{ margin: 0, flex: 1 }}><label style={{ fontSize: 12 }}>💵 Cash</label><input type="number" value={cashAmt} onChange={handleCashChange} placeholder="0.00" /></div>
+                      <div className="form-group" style={{ margin: 0, flex: 1 }}>
+                        <label style={{ fontSize: 12 }}>💵 Cash</label>
+                        <input type="number" value={cashAmt} onChange={handleCashChange} placeholder="0.00" />
+                      </div>
                       <div className="form-group" style={{ margin: 0, flex: 1 }}>
                         <label style={{ fontSize: 12 }}>
-                          <select value={creditType} onChange={e => setCreditType(e.target.value)} style={{ border: 'none', background: 'none', color: 'var(--text2)', fontSize: 12, padding: 0 }}>
-                            <option value="card">💳 Card</option><option value="upi">📱 UPI</option>
+                          <select value={creditType} onChange={e => setCreditType(e.target.value)}
+                            style={{ border: 'none', background: 'none', color: 'var(--text2)', fontSize: 12, padding: 0 }}>
+                            <option value="card">💳 Card</option>
+                            <option value="upi">📱 UPI</option>
                           </select>
                         </label>
                         <input type="number" value={creditAmt} onChange={handleCreditChange} placeholder="0.00" />
                       </div>
-                      {(cashAmt || creditAmt) && <div style={{ fontSize: 11, color: splitOk?'var(--green)':'var(--red)', alignSelf: 'flex-end', paddingBottom: 8 }}>{splitOk?'✓ OK':`Diff: ${fmt(customerReturnTotal-cashVal-creditVal)}`}</div>}
+                      {(cashAmt || creditAmt) && (
+                        <div style={{ fontSize: 11, color: splitOk ? 'var(--green)' : 'var(--red)', alignSelf: 'flex-end', paddingBottom: 8 }}>
+                          {splitOk ? '✓ OK' : `Diff: ${fmt(customerReturnTotal - cashVal - creditVal)}`}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               </>
             )}
 
+            {/* If ONLY damaged/expired lines (no customer return), show info */}
+            {!hasCustomerReturn && lines.length > 0 && (
+              <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 'var(--radius)',
+                background: 'var(--bg3)', border: '1px solid var(--border)', fontSize: 13, color: 'var(--text3)' }}>
+                ℹ️ All items are damaged / expired — stock will be adjusted. No refund payment required.
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={handleConfirm} disabled={loading}>
-                {loading ? 'Processing…' : `✓ Confirm Return${hasCustomerReturn ? ` ${fmt(customerReturnTotal)}` : ''}`}
+              <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}
+                onClick={handleConfirm} disabled={loading}>
+                {loading ? 'Processing…' : (
+                  <>
+                    ✓ Confirm Return{hasCustomerReturn ? ` — ${fmt(customerReturnTotal)}` : ''}
+                    <Fkey k="F1" />
+                  </>
+                )}
               </button>
               <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
             </div>
@@ -884,6 +929,7 @@ function ItemReturnModal({ onClose }) {
         )}
       </div>
 
+      {/* Bill selector modal */}
       {billsModal && (
         <div className="modal-overlay" style={{ zIndex: 400 }}>
           <div className="modal" style={{ maxWidth: 600 }}>
@@ -940,24 +986,16 @@ function InternalSaleModal({ onClose }) {
   resultsRef.current = results;
   const listRef = useRef();
 
-  
- useEffect(() => {
-  if (!listRef.current) return;
-
-  const container = listRef.current;
-  const items = container.children;
-
-  if (!items || highlighted < 0 || highlighted >= items.length) return;
-
-  const el = items[highlighted];
-  if (!el) return;
-
-  // Center the selected item
-  const offset =
-    el.offsetTop - container.clientHeight / 2 + el.offsetHeight / 2;
-
-  container.scrollTop = offset;
-}, [highlighted]);
+  useEffect(() => {
+    if (!listRef.current) return;
+    const container = listRef.current;
+    const items = container.children;
+    if (!items || highlighted < 0 || highlighted >= items.length) return;
+    const el = items[highlighted];
+    if (!el) return;
+    const offset = el.offsetTop - container.clientHeight / 2 + el.offsetHeight / 2;
+    container.scrollTop = offset;
+  }, [highlighted]);
 
   useEffect(() => {
     getInternalMasters().then(r => setMasters(r.data.filter(m => m.is_active)));
@@ -973,19 +1011,14 @@ function InternalSaleModal({ onClose }) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [destId, lines]);
 
-  // FIX: uses freshSearch to bypass cache
   const doSearch = async q => {
     if (!q.trim()) { setResults([]); return; }
     try {
       const { data } = await freshSearch(q);
       const inStock = data.filter(p => parseFloat(p.stock_quantity) > 0);
       setResults(inStock);
-setHighlighted(0);
-
-setTimeout(() => {
-  if (listRef.current) listRef.current.scrollTop = 0;
-}, 0);
       setHighlighted(0);
+      setTimeout(() => { if (listRef.current) listRef.current.scrollTop = 0; }, 0);
     } catch { setResults([]); }
   };
   const handleSearchChange = e => { const v = e.target.value; setQuery(v); clearTimeout(debounceRef.current); debounceRef.current = setTimeout(() => doSearch(v), 300); };
@@ -996,12 +1029,7 @@ setTimeout(() => {
     if (stock <= 0) { toast.error(`${p.name} is out of stock`); return; }
     setPendingProd(p);
     setPendingQty('');
-    setTimeout(() => {
-      if (qtyRef.current) {
-        qtyRef.current.focus();
-        qtyRef.current.select();
-      }
-    }, 50);
+    setTimeout(() => { if (qtyRef.current) { qtyRef.current.focus(); qtyRef.current.select(); } }, 50);
   };
 
   const confirmAddInternal = () => {
@@ -1025,48 +1053,22 @@ setTimeout(() => {
   };
 
   const handleScanKey = async e => {
-  const cur = resultsRef.current;
-
-  if (e.key === 'ArrowDown') {
+    const cur = resultsRef.current;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlighted(h => Math.min(h + 1, cur.length - 1)); return; }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); setHighlighted(h => Math.max(h - 1, 0)); return; }
+    if (e.key === 'Escape') { setResults([]); setQuery(''); setHighlighted(0); return; }
+    if (e.key !== 'Enter' || !query.trim()) return;
     e.preventDefault();
-    setHighlighted(h => Math.min(h + 1, cur.length - 1));
-    return;
-  }
-
-  if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    setHighlighted(h => Math.max(h - 1, 0));
-    return;
-  }
-
-  if (e.key === 'Escape') {
-    setResults([]);
-    setQuery('');
-    setHighlighted(0);
-    return;
-  }
-
-  if (e.key !== 'Enter' || !query.trim()) return;
-
-  e.preventDefault();
-  clearTimeout(debounceRef.current);
-
-  if (cur.length > 0) {
-    stageProduct(cur[highlighted] ?? cur[0]);
-    return;
-  }
-
-  try {
-    const { data } = await freshBarcode(query.trim());
-    const rows = Array.isArray(data) ? data : [data];
-    const inStock = rows.filter(p => parseFloat(p.stock_quantity) > 0);
-
-    if (inStock.length > 0) stageProduct(inStock[0]);
-    else toast.error('Product not found or out of stock');
-  } catch {
-    toast.error('Product not found');
-  }
-};
+    clearTimeout(debounceRef.current);
+    if (cur.length > 0) { stageProduct(cur[highlighted] ?? cur[0]); return; }
+    try {
+      const { data } = await freshBarcode(query.trim());
+      const rows = Array.isArray(data) ? data : [data];
+      const inStock = rows.filter(p => parseFloat(p.stock_quantity) > 0);
+      if (inStock.length > 0) stageProduct(inStock[0]);
+      else toast.error('Product not found or out of stock');
+    } catch { toast.error('Product not found'); }
+  };
 
   const updateLine = (key, field, val) => setLines(prev => prev.map(l => l._key===key?{...l,[field]:val}:l));
   const removeLine = key => setLines(prev => prev.filter(l => l._key !== key));
@@ -1114,30 +1116,13 @@ setTimeout(() => {
             onChange={e => setPendingQty(e.target.value)}
             placeholder="0"
             onKeyDown={e => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                confirmAddInternal();
-              }
-              if (e.key === 'Escape') {
-                setPendingProd(null);
-                setPendingQty('');
-                setTimeout(() => {
-                  searchRef.current?.focus();
-                  searchRef.current?.select();
-                }, 50);
-              }
+              if (e.key === 'Enter') { e.preventDefault(); confirmAddInternal(); }
+              if (e.key === 'Escape') { setPendingProd(null); setPendingQty(''); setTimeout(() => { searchRef.current?.focus(); searchRef.current?.select(); }, 50); }
             }}
             style={{ width: 80, textAlign: 'center', fontWeight: 700, fontSize: 16, padding: '6px 8px' }}
             min="0.001" step={pendingProd.selling_unit === 'kg' ? '0.001' : '1'} />
           <button className="btn btn-primary btn-sm" onClick={confirmAddInternal} style={{ padding: '6px 14px' }}>✓ Add</button>
-          <button className="btn btn-secondary btn-sm" onClick={() => { setPendingProd(null); setPendingQty(''); 
-            setTimeout(() => {
-            if (searchRef.current) {
-              searchRef.current.focus();
-              searchRef.current.select();
-            }
-          }, 50); }} style={{ padding: '6px 10px' }}>✕
-          </button>
+          <button className="btn btn-secondary btn-sm" onClick={() => { setPendingProd(null); setPendingQty(''); setTimeout(() => { if (searchRef.current) { searchRef.current.focus(); searchRef.current.select(); } }, 50); }} style={{ padding: '6px 10px' }}>✕</button>
         </div>
       )}
 
@@ -1145,40 +1130,10 @@ setTimeout(() => {
         <input ref={searchRef} value={query} onChange={handleSearchChange} onKeyDown={handleScanKey}
           placeholder="🔍 Scan barcode or search product… (Enter to select, then enter qty)" style={{ fontSize: 14, padding: '10px 14px' }} />
         {results.length > 0 && (
-          <div
-              ref={listRef}
-              style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                zIndex: 300,
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius)',
-                marginTop: 4,
-                maxHeight: 200,
-                overflowY: 'auto',
-                boxShadow: 'var(--shadow)',
-                paddingBottom: 30   // ✅ ADD THIS LINE
-                
-              }}
-            >
+          <div ref={listRef} style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', marginTop: 4, maxHeight: 200, overflowY: 'auto', boxShadow: 'var(--shadow)', paddingBottom: 30 }}>
             {results.map((p, i) => (
-                <div
-                  key={`${p.id}-${i}`}
-                  onClick={() => stageProduct(p)}
-                  onMouseEnter={() => setHighlighted(i)}
-                  style={{
-                    padding: '8px 14px',
-                    cursor: 'pointer',
-                    borderBottom: '1px solid var(--border)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    background: highlighted === i ? 'var(--accent-dim)' : '',
-                    marginBottom: i === results.length - 1 ? 8 : 0
-                  }}
-                >
+              <div key={`${p.id}-${i}`} onClick={() => stageProduct(p)} onMouseEnter={() => setHighlighted(i)}
+                style={{ padding: '8px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', background: highlighted === i ? 'var(--accent-dim)' : '', marginBottom: i === results.length - 1 ? 8 : 0 }}>
                 <div><div style={{ fontWeight: 600 }}>{p.name}</div><div style={{ fontSize: 11, color: 'var(--text3)' }}>{p.barcode}</div></div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ color: 'var(--accent)', fontWeight: 700 }}>{fmt(p.selling_price)}</div>
@@ -1559,36 +1514,18 @@ export default function Sale() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0, width: 150 }}>
           {(isAdmin || can('can_access_direct_sale')) && (
-            <button
-              className="btn btn-secondary"
-              onClick={() => setShowDirect(true)}
-              style={{
-                flex: 1, display: 'flex', flexDirection: 'column',
-                justifyContent: 'center', alignItems: 'center',
-                gap: 8, width: '100%', fontSize: 15, fontWeight: 700,
-                color: 'var(--green)', borderColor: 'var(--green)',
-                background: 'rgba(34,197,94,0.08)',
-                borderRadius: 'var(--radius)',
-              }}>
+            <button className="btn btn-secondary" onClick={() => setShowDirect(true)}
+              style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 8, width: '100%', fontSize: 15, fontWeight: 700, color: 'var(--green)', borderColor: 'var(--green)', background: 'rgba(34,197,94,0.08)', borderRadius: 'var(--radius)' }}>
               <span style={{ fontSize: 30 }}>⚡</span>
               Direct Sale
-              <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(34,197,94,0.2)', borderRadius: 4, padding: '2px 8px', fontFamily: 'monospace', color: 'var(--green)', marginLeft: 0 }}>F6</span>
+              <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(34,197,94,0.2)', borderRadius: 4, padding: '2px 8px', fontFamily: 'monospace', color: 'var(--green)' }}>F6</span>
             </button>
           )}
-          <button
-            className="btn btn-secondary"
-            onClick={() => setShowInternal(true)}
-            style={{
-              flex: 1, display: 'flex', flexDirection: 'column',
-              justifyContent: 'center', alignItems: 'center',
-              gap: 8, width: '100%', fontSize: 15, fontWeight: 700,
-              color: 'var(--purple)', borderColor: 'var(--purple)',
-              background: 'rgba(168,85,247,0.08)',
-              borderRadius: 'var(--radius)',
-            }}>
+          <button className="btn btn-secondary" onClick={() => setShowInternal(true)}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 8, width: '100%', fontSize: 15, fontWeight: 700, color: 'var(--purple)', borderColor: 'var(--purple)', background: 'rgba(168,85,247,0.08)', borderRadius: 'var(--radius)' }}>
             <span style={{ fontSize: 30 }}>🏭</span>
             Internal Sale
-            <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(168,85,247,0.2)', borderRadius: 4, padding: '2px 8px', fontFamily: 'monospace', color: 'var(--purple)', marginLeft: 0 }}>F7</span>
+            <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(168,85,247,0.2)', borderRadius: 4, padding: '2px 8px', fontFamily: 'monospace', color: 'var(--purple)' }}>F7</span>
           </button>
         </div>
 

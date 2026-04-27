@@ -1,10 +1,10 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:       #f0f4ff;
-  --bg2:      #e8edf8;
+  --bg:       #EFE9E3;
+  --bg2:      #C9B59C;
   --bg3:      #dde4f5;
-  --surface:  #ffffff;
+  --surface:  #D9CFC7;
   --surface2: #f5f7ff;
   --border:   #c8d0e8;
   --accent:   #f97316;
@@ -19,8 +19,8 @@
   --purple:   #7c3aed;
   --yellow:   #d97706;
   --text:     #1e2140;
-  --text2:    #4a5080;
-  --text3:    #8890b0;
+  --text2:    #020308;
+  --text3:    #02040a;
   --radius:   10px;
   --radius-lg: 16px;
   --shadow:   0 2px 16px rgba(30,33,64,0.10);

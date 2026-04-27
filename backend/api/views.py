@@ -1123,7 +1123,11 @@ class ItemReturnViewSet(viewsets.ModelViewSet):
             return Response({'error': 'No items provided'}, status=400)
 
         # Calculate total
-        total = sum(Decimal(str(l['quantity'])) * Decimal(str(l['price'])) for l in lines)
+        total = sum(
+            Decimal(str(l['quantity'])) * Decimal(str(l['price']))
+            for l in lines
+            if l.get('return_type', 'customer_return') == 'customer_return'
+        )
 
         # Create header
         ir = ItemReturn.objects.create(
@@ -1212,14 +1216,13 @@ class ItemReturnViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def bills_with_product(self, request):
-        """
-        GET /item-returns/bills_with_product/?product_id=5&qty=2
-        Returns all bills containing the product with qty >= requested qty
-        """
         product_id = request.query_params.get('product_id')
         qty        = request.query_params.get('qty', 1)
+        date_to    = request.query_params.get('date_to')
+
         if not product_id:
             return Response({'error': 'product_id required'}, status=400)
+
         try:
             qty = Decimal(str(qty))
         except Exception:
@@ -1229,6 +1232,24 @@ class ItemReturnViewSet(viewsets.ModelViewSet):
             product_id=product_id,
             quantity__gte=qty
         ).select_related('bill', 'product').order_by('-bill__created_at')
+
+        if date_to:
+            import datetime
+            try:
+                date_obj = datetime.date.fromisoformat(date_to)
+                # Filter bills created exactly on this local date (IST)
+                start_of_day = timezone.make_aware(
+                    datetime.datetime.combine(date_obj, datetime.time(0, 0, 0))
+                )
+                end_of_day = timezone.make_aware(
+                    datetime.datetime.combine(date_obj, datetime.time(23, 59, 59, 999999))
+                )
+                sale_items = sale_items.filter(
+                    bill__created_at__gte=start_of_day,
+                    bill__created_at__lte=end_of_day
+                )
+            except ValueError:
+                pass
 
         result = []
         for si in sale_items:

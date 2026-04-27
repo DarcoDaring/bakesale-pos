@@ -39,9 +39,10 @@ export default function PrintBill({ bill, onClose }) {
       return ' '.repeat(pad) + s;
     };
 
-    lines.push(centre('BAKESALE'));
+    lines.push(centre('ALTHAHANI'));
     lines.push(centre('GST IN: 27AAACB7450P1ZV'));
     lines.push(centre('FSSAI: 10012022000234'));
+    lines.push(centre('MOB: 8921201010'));
     lines.push(divider('-', W));
 
     // Bill info
@@ -90,7 +91,7 @@ export default function PrintBill({ bill, onClose }) {
     // Total
     lines.push(lr('TOTAL', 'Rs.' + total.toFixed(2), W));
     lines.push(divider('-', W));
-    lines.push(centre('Thank you for your purchase!'));
+    //lines.push(centre('Thank you for your purchase!'));
     lines.push(centre('Items sold are non-returnable'));
     // Feed lines for auto-cut
     lines.push('');
@@ -154,10 +155,13 @@ pre { margin: 0; padding: 0; white-space: pre; overflow: hidden; font-weight: bo
         <div style={{ padding: '20px 24px', fontFamily: 'monospace', fontSize: 13, color: '#000', background: '#fff', lineHeight: 1.6 }}>
 
           <div style={{ textAlign: 'center', marginBottom: 12 }}>
-            <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: 2 }}>BAKESALE</div>
-            <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>
+            <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 2 }}>ALTHAHANI
+
+            </div>
+            <div style={{ fontSize: 8, color: '#555', marginTop: 2 }}>
               GST IN: 27AAACB7450P1ZV<br />
-              FSSAI: 10012022000234
+              FSSAI: 10012022000234<br/>
+              MOB:8921201010
             </div>
           </div>
 
@@ -229,7 +233,7 @@ pre { margin: 0; padding: 0; white-space: pre; overflow: hidden; font-weight: bo
           <div style={{ borderTop: '1px dashed #999', margin: '12px 0 8px' }} />
           <div style={{ textAlign: 'center', fontSize: 11, color: '#888' }}>
             <div>Thank you for your purchase!</div>
-            <div style={{ marginTop: 2 }}>Items sold are non-returnable</div>
+            <div style={{ marginTop: 2 }}></div>
           </div>
         </div>
       </div>
