@@ -229,6 +229,7 @@ function UserPermissionsModal({ onClose }) {
                     <PermToggle label="Purchase" field="can_access_purchase" description="Access the Purchase page" />
                     <PermToggle label="Reports"  field="can_access_reports"  description="Access the Reports page" />
                     <PermToggle label="Stock"    field="can_access_stock"    description="Access the Stock page" />
+                    <PermToggle label="Kaapi Chai"  field="kc_access"           description="Access the Kaapi Chai POS page" />
                   </Section>
                   <Section title="Sale — Sub Permissions">
                     <PermToggle label="Edit Bill"    field="can_edit_bill"           description="Edit payment mode of existing bills" />
@@ -256,6 +257,15 @@ function UserPermissionsModal({ onClose }) {
                     <PermToggle label="Physical Stock"   field="can_physical_stock"  description="Submit physical stock count requests" />
                     <PermToggle label="Stock Report"     field="can_stock_report"    description="View stock count and physical stock reports" />
                     <PermToggle label="Stock Transfer"   field="can_stock_transfer"  description="Legacy stock transfer access" />
+                  </Section>
+                  <Section title="Kaapi Chai POS">
+                    <PermToggle label="Sale"           field="kc_sale"     description="Access Kaapi Chai Sale page" />
+                    <PermToggle label="Delete Bill"    field="kc_delete_bill"  description="Delete bills in Kaapi Chai Sale" />
+                    <PermToggle label="Purchase"       field="kc_purchase" description="Access Kaapi Chai Purchase page" />
+                    <PermToggle label="Stock"          field="kc_stock"    description="Access Kaapi Chai Stock page" />
+                    <PermToggle label="Report"         field="kc_report"   description="Access Kaapi Chai Reports" />
+                    <PermToggle label="Store Issue"    field="kc_store"    description="Access Kaapi Chai Store Issue" />
+                    <PermToggle label="Master Control" field="kc_master"   description="Access Sale Item Master" />
                   </Section>
                 </div>
               )}

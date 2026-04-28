@@ -27,7 +27,10 @@ from .serializers import (
     UserPermissionSerializer, ItemReturnSerializer
 )
 from .permissions import IsAdminUser
-
+from .kc_views import (
+    KCSaleItemViewSet, KCBillViewSet, KCPurchaseViewSet,
+    KCStockViewSet, KCStoreItemViewSet, KCStoreIssueViewSet, KCReportView,
+)
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class   = CustomTokenObtainPairSerializer
@@ -131,7 +134,18 @@ class PurchaseBillViewSet(viewsets.ModelViewSet):
         return PurchaseBillSerializer
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        from django.utils.dateparse import parse_date
+        bill_date   = self.request.data.get('bill_date')
+        parsed_date = parse_date(bill_date) if bill_date else None
+        instance    = serializer.save(created_by=self.request.user)
+        if parsed_date:
+            PurchaseBill.objects.filter(pk=instance.pk).update(
+                date=instance.date.replace(
+                    year=parsed_date.year,
+                    month=parsed_date.month,
+                    day=parsed_date.day,
+                )
+            )
 
     @action(detail=True, methods=['patch'])
     def mark_paid(self, request, pk=None):

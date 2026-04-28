@@ -12,6 +12,7 @@ export default function Layout() {
 
   const navItems = [
     { to: '/sale',     label: 'Sale',       icon: '🛒', perm: 'can_access_sale' },
+    { to: '/kaapi-chai', label: 'Kaapi Chai', icon: '☕', alwaysShow: true },
     { to: '/purchase', label: 'Purchase',   icon: '📦', perm: 'can_access_purchase' },
     { to: '/reports',  label: 'Reports',    icon: '📊', perm: 'can_access_reports' },
     { to: '/stock',    label: 'Stock',      icon: '🗃️', perm: 'can_access_stock' },
@@ -20,9 +21,10 @@ export default function Layout() {
 
   // Filter nav items by permission
   const visibleNav = navItems.filter(n => {
-    if (n.adminOnly) return isAdmin;
-    return isAdmin || can(n.perm);
-  });
+  if (n.adminOnly)  return isAdmin;
+  if (n.alwaysShow) return true;
+  return isAdmin || can(n.perm);
+});
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>

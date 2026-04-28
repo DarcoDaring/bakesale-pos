@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -9,6 +9,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const passwordRef = useRef(null);
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -49,11 +50,34 @@ export default function Login() {
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label>Username</label>
-              <input autoFocus value={username} onChange={e => setUsername(e.target.value)} placeholder="Enter username" />
+              <input
+                autoFocus
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                placeholder="Enter username"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    passwordRef.current?.focus();
+                  }
+                }}
+              />
             </div>
             <div className="form-group">
               <label>Password</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter password" />
+              <input
+                type="password"
+                ref={passwordRef}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Enter password"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
+              />
             </div>
             <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '12px', marginTop: 8 }} disabled={loading}>
               {loading ? 'Signing in…' : 'Sign In →'}

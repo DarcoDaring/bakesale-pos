@@ -1,6 +1,10 @@
 from django.db import models, transaction
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-
+from .kc_models import (
+    KCSaleItem, KCSaleSubItem, KCBill, KCBillLine,
+    KCPurchase, KCPurchaseLine, KCStock, KCStockLine,
+    KCStoreItem, KCStoreIssue, KCStoreIssueLine,
+)
 
 class UserManager(BaseUserManager):
     def create_user(self, username, password=None, role='general'):
@@ -464,6 +468,15 @@ class UserPermission(models.Model):
     can_physical_stock  = models.BooleanField(default=True)
     can_stock_report    = models.BooleanField(default=True)
 
+        # Kaapi Chai POS
+    kc_sale     = models.BooleanField(default=True)
+    kc_purchase = models.BooleanField(default=True)
+    kc_stock    = models.BooleanField(default=True)
+    kc_report   = models.BooleanField(default=True)
+    kc_store    = models.BooleanField(default=True)
+    kc_master   = models.BooleanField(default=False)
+    kc_access      = models.BooleanField(default=True)
+    kc_delete_bill = models.BooleanField(default=False)
     class Meta:
         verbose_name = 'User Permission'
 

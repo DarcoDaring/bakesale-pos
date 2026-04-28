@@ -1042,10 +1042,12 @@ export default function Purchase() {
   const [showProduct,    setShowProduct]    = useState(false);
   const [showVendor,     setShowVendor]     = useState(false);
   const [showPurReturn,  setShowPurReturn]  = useState(false);
+  const [billDate, setBillDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   const cellRefs          = useRef({});
   const mrpJustBlurredRef = useRef(null);
-
+  const dateRef   = useRef();
+  const vendorRef = useRef();
   const registerRef = (rowId, col, el) => {
     if (!cellRefs.current[rowId]) cellRefs.current[rowId] = {};
     if (el) cellRefs.current[rowId][col] = el;
@@ -1114,6 +1116,7 @@ export default function Purchase() {
 
   useEffect(() => { refreshPurchaseNumber(); }, []);
   useEffect(() => { refreshVendors(); }, []);
+  useEffect(() => { setTimeout(() => dateRef.current?.focus(), 200); }, []);
 
   const updateRow = (id, field, value) =>
     setRows(prev => prev.map(r => {
@@ -1171,6 +1174,7 @@ export default function Purchase() {
     try {
       const payload = {
         vendor: selectedVendor, is_paid: isPaid,
+        bill_date: billDate,
         items: rows.map(r => {
           const qty = parseFloat(r.quantity); const totalQty = parseFloat(r.total_qty);
           return { product: r.product.id, purchase_unit: r.purchase_unit, quantity: qty, purchase_price: parseFloat(getBasePrice(r).toFixed(4)), tax: parseFloat(r.tax) || 0, tax_type: r.tax_type, mrp: parseFloat(r.mrp), selling_unit: r.selling_unit, selling_qty: r.purchase_unit === 'case' ? (totalQty / qty) : 1 };
@@ -1225,9 +1229,32 @@ export default function Purchase() {
               {purchaseNumber}
             </div>
           </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)' }}>
+              Bill Date
+              {billDate !== new Date().toISOString().split('T')[0] && (
+                <span style={{ marginLeft: 8, background: 'var(--accent)', color: '#fff', fontSize: 9, fontWeight: 700, borderRadius: 8, padding: '1px 6px' }}>BACK DATE</span>
+              )}
+            </div>
+            <input
+              ref={dateRef}
+              type="date"
+              value={billDate}
+              onChange={e => setBillDate(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); vendorRef.current?.focus(); }
+                if (e.key === 'F1')    { e.preventDefault(); handleSubmit(); }
+              }}
+              style={{ padding: '8px 12px', borderRadius: 'var(--radius)', border: '1.5px solid var(--border)', fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 14, color: billDate !== new Date().toISOString().split('T')[0] ? 'var(--accent)' : 'var(--text)', width: 170 }}
+            />
+          </div>
           <div className="form-group" style={{ margin: 0, flex: 1, minWidth: 200 }}>
             <label>Vendor *{!selectedVendor && <span style={{ color: 'var(--red)', marginLeft: 8, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— required</span>}</label>
-            <select value={selectedVendor} onChange={e => setSelectedVendor(e.target.value)} style={{ borderColor: !selectedVendor ? 'var(--red)' : undefined }}>
+            <select ref={vendorRef} value={selectedVendor} onChange={e => setSelectedVendor(e.target.value)}
+                style={{ borderColor: !selectedVendor ? 'var(--red)' : undefined }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); const inputs = document.querySelectorAll('td input[placeholder="Scan / search…"]'); if (inputs[0]) inputs[0].focus(); } }}
+              >
               <option value="">— Select vendor —</option>
               {vendors.filter(v => v.is_active).map(v => <option key={v.id} value={v.id}>{v.name}{v.phone ? ` · ${v.phone}` : ''}</option>)}
             </select>
