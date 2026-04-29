@@ -123,10 +123,12 @@ function PurchaseBillDetailModal({ billId, onClose }) {
   }, [billId]);
   if (loading) return <div className="modal-overlay"><div className="modal" style={{ maxWidth: 700 }}><div className="spinner" /></div></div>;
   if (!bill) return null;
-  const totalValue = bill.items.reduce((s, item) => {
-    const qty = parseFloat(item.quantity), price = parseFloat(item.purchase_price), tax = parseFloat(item.tax || 0);
-    return s + qty * price * (1 + tax / 100);
-  }, 0);
+  const totalValue = bill.total_value !== undefined
+    ? parseFloat(bill.total_value)
+    : bill.items.reduce((s, item) => {
+        const qty = parseFloat(item.quantity), price = parseFloat(item.purchase_price), tax = parseFloat(item.tax || 0);
+        return s + qty * price * (1 + tax / 100);
+    }, 0);
   return (
     <div className="modal-overlay"><div className="modal" style={{ maxWidth: 700, maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -152,6 +154,26 @@ function PurchaseBillDetailModal({ billId, onClose }) {
             })}
           </tbody>
           <tfoot>
+            {parseFloat(bill.round_off || 0) !== 0 && (
+              <tr>
+                <td colSpan={5} style={{ textAlign: 'right', color: 'var(--text3)', fontSize: 12 }}>
+                  Items Subtotal
+                </td>
+                <td style={{ fontFamily: 'var(--mono)', color: 'var(--text3)' }}>
+                  {fmt(totalValue - parseFloat(bill.round_off || 0))}
+                </td>
+              </tr>
+            )}
+            {parseFloat(bill.round_off || 0) !== 0 && (
+              <tr>
+                <td colSpan={5} style={{ textAlign: 'right', color: parseFloat(bill.round_off) > 0 ? 'var(--green)' : 'var(--red)', fontSize: 12 }}>
+                  Round Off
+                </td>
+                <td style={{ fontFamily: 'var(--mono)', color: parseFloat(bill.round_off) > 0 ? 'var(--green)' : 'var(--red)', fontSize: 12 }}>
+                  {parseFloat(bill.round_off) > 0 ? '+' : ''}{fmt(parseFloat(bill.round_off))}
+                </td>
+              </tr>
+            )}
             <tr>
               <td colSpan={5} style={{ fontWeight: 800, textAlign: 'right' }}>TOTAL</td>
               <td style={{ fontWeight: 800, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{fmt(totalValue)}</td>

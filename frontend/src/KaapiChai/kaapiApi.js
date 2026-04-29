@@ -1,6 +1,3 @@
-/**
- * kaapiApi.js — Kaapi Chai POS API service
- */
 import api from '../services/api';
 
 // ── Sale Item Master ──────────────────────────────────────────────────────────
@@ -34,6 +31,10 @@ export const updateKCStoreItem       = (id, d) => api.patch(`/kc-store-items/${i
 export const createKCIssue           = d       => api.post('/kc-issues/', d);
 export const getKCIssues             = params  => api.get('/kc-issues/', { params });
 export const deleteKCIssue           = id      => api.delete(`/kc-issues/${id}/`);
+
+// ── KC Closing Stock ──────────────────────────────────────────────────────────
+export const getKCClosingStock       = ()      => api.get('/kc-closing-stock/');
+export const saveKCClosingStock      = d       => api.post('/kc-closing-stock/', d);
 
 // ── KC Report ─────────────────────────────────────────────────────────────────
 export const getKCReport             = params  => api.get('/kc-report/', { params });

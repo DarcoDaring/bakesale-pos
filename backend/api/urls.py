@@ -2,7 +2,7 @@ from django.urls import path, include
  
 from .kc_views import (
     KCSaleItemViewSet, KCBillViewSet, KCPurchaseViewSet,
-    KCStockViewSet, KCStoreItemViewSet, KCStoreIssueViewSet, KCReportView,
+    KCStockViewSet, KCStoreItemViewSet, KCStoreIssueViewSet, KCReportView, KCClosingStockViewSet
 )
 from rest_framework.routers import DefaultRouter
 from . import views
@@ -32,6 +32,7 @@ router.register(r'kc-stock',       KCStockViewSet,      basename='kc-stock')
 router.register(r'kc-store-items', KCStoreItemViewSet,  basename='kc-store-items')
 router.register(r'kc-issues',      KCStoreIssueViewSet, basename='kc-issues')
 router.register(r'kc-report',      KCReportView,        basename='kc-report')
+router.register(r'kc-closing-stock', KCClosingStockViewSet, basename='kc-closing-stock')
 urlpatterns = [
     path('', include(router.urls)),
     path('backup/', views.BackupView.as_view(), name='backup'),

@@ -122,6 +122,7 @@ class PurchaseBillListSerializer(serializers.ModelSerializer):
             price = float(item.purchase_price)
             tax   = float(item.tax)
             total += qty * price * (1 + tax / 100)
+        total += float(obj.round_off or 0)
         return round(total, 2)
 
     def get_item_count(self, obj):
@@ -132,10 +133,22 @@ class PurchaseBillSerializer(serializers.ModelSerializer):
     items       = PurchaseItemSerializer(many=True)
     vendor_name = serializers.CharField(source='vendor.name', read_only=True)
 
+    total_value = serializers.SerializerMethodField()
+
+    def get_total_value(self, obj):
+        total = 0
+        for item in obj.items.all():
+            qty   = float(item.quantity)
+            price = float(item.purchase_price)
+            tax   = float(item.tax)
+            total += qty * price * (1 + tax / 100)
+        total += float(obj.round_off or 0)
+        return round(total, 2)
+
     class Meta:
         model  = PurchaseBill
         fields = ['id', 'purchase_number', 'vendor', 'vendor_name',
-                  'is_paid', 'items', 'date']
+                'is_paid', 'round_off', 'items', 'date', 'total_value']
         read_only_fields = ['id', 'purchase_number', 'date']
 
     def create(self, validated_data):

@@ -21,6 +21,14 @@ class KCSaleSubItem(models.Model):
 class KCBill(models.Model):
     bill_number = models.CharField(max_length=50, unique=True, blank=True)
     total       = models.DecimalField(max_digits=12, decimal_places=2)
+    PAYMENT_CHOICES = [
+    ('cash','Cash'),('card','Card'),('upi','UPI'),
+        ('cash_card','Cash & Card'),('cash_upi','Cash & UPI'),
+    ]
+    payment_type = models.CharField(max_length=10, choices=PAYMENT_CHOICES, default='cash')
+    cash_amount  = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    card_amount  = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    upi_amount   = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     created_at  = models.DateTimeField(auto_now_add=True)
     created_by  = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True)
 
@@ -162,3 +170,11 @@ class KCStoreIssueLine(models.Model):
     @property
     def total(self):
         return self.qty * self.cost
+    
+
+class KCClosingStock(models.Model):
+    item          = models.OneToOneField(KCStoreItem, on_delete=models.CASCADE, related_name='closing_stock')
+    qty           = models.DecimalField(max_digits=10, decimal_places=3)
+    cost_per_unit = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    updated_at    = models.DateTimeField(auto_now=True)
+    updated_by    = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True)

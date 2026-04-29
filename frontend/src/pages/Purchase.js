@@ -151,328 +151,422 @@ function ProductMasterModal({ onClose }) {
   };
 
   // ── printBarcode: TSC TTP-244 Pro, packed date above expiry ──────────────
-  const printBarcode = p => {
-    const handleMessage = event => {
-      if (event.data?.type === 'BARCODE_SETTINGS_SAVE') {
-        try { localStorage.setItem(BARCODE_SETTINGS_KEY, JSON.stringify(event.data.settings)); }
-        catch {}
-        window.removeEventListener('message', handleMessage);
+const printBarcode = p => {
+  const handleMessage = event => {
+    if (event.data?.type === 'BARCODE_SETTINGS_SAVE') {
+      try { localStorage.setItem(BARCODE_SETTINGS_KEY, JSON.stringify(event.data.settings)); }
+      catch {}
+      window.removeEventListener('message', handleMessage);
+    }
+  };
+  window.addEventListener('message', handleMessage);
+
+  const saved = loadBarcodeSettings();
+  const todayISO = new Date().toISOString().split('T')[0];
+
+  const d = {
+    copies:        saved.copies        ?? 1,
+    includePacked: saved.includePacked ?? true,
+    packedDate:    saved.packedDate    || todayISO,
+    includeExpiry: saved.includeExpiry ?? false,
+    expiryDate:    saved.expiryDate    || '',
+  };
+
+  const price = parseFloat(p.selling_price || 0).toFixed(2);
+
+  const win = window.open('', '_blank', 'width=720,height=560');
+  if (!win) { toast.error('Popup blocked. Please allow popups.'); return; }
+
+  // ── Build the pure print HTML sent to Electron silentPrint ───────────────
+  // Key insight: @page size = full label (100x50mm landscape = 100mm wide, 50mm tall)
+  // body margin-left = 38mm pushes content past the yellow zone into the white area
+  // NO position:absolute — just normal flow with margin
+  const buildPrintHTML = (v) => {
+    const fmtDate = s => {
+      if (!s) return '';
+      try { const [y, m, dd] = s.split('-'); return dd + '/' + m + '/' + y; }
+      catch { return s; }
+    };
+
+    let labelsHTML = '';
+    for (let i = 0; i < v.copies; i++) {
+      labelsHTML += '<div class="lbl">';
+      labelsHTML += '<div class="lbl-name">' + p.name.toUpperCase() + '</div>';
+      if (v.includePacked && v.packedDate)
+        labelsHTML += '<div class="lbl-date">Pkd. Date : ' + fmtDate(v.packedDate) + '</div>';
+      if (v.includeExpiry && v.expiryDate)
+        labelsHTML += '<div class="lbl-date">Exp. Date : ' + fmtDate(v.expiryDate) + '</div>';
+      labelsHTML += '<div class="lbl-rate">Rate : ' + price + '</div>';
+      labelsHTML += '<svg id="bc' + i + '"></svg>';
+      labelsHTML += '</div>';
+    }
+
+    return `<!DOCTYPE html><html><head>
+<meta charset="utf-8"><title>x</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  @page {
+    size: 100mm 50mm;
+    margin: 0;
+  }
+
+  /*
+   * Full label is 100mm wide x 50mm tall.
+   * Yellow zone = left 38mm (pre-printed, we skip it).
+   * White zone  = remaining 62mm on the right.
+   * Using margin-left on body pushes content into the white zone.
+   * Width is set to 62mm so content stays within the white area.
+   */
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100mm;
+    height: 50mm;
+  }
+
+  body {
+    margin-left: 38mm;
+    width: 62mm;
+  }
+
+  .lbl {
+    width: 62mm;
+    height: 50mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 5px 8px;
+    overflow: hidden;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .lbl-name {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    margin-bottom: 5px;
+    word-break: break-word;
+  }
+  .lbl-date {
+    font-family: Arial, sans-serif;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #111;
+    line-height: 1.9;
+  }
+  .lbl-rate {
+    font-family: Arial, sans-serif;
+    font-size: 17px;
+    font-weight: 900;
+    color: #000;
+    margin-top: 5px;
+    margin-bottom: 5px;
+  }
+  svg { max-width: 100%; display: block; }
+</style>
+</head><body>
+${labelsHTML}
+<script>
+window.onload = function() {
+  for (var i = 0; i < ${v.copies}; i++) {
+    JsBarcode('#bc' + i, ${JSON.stringify(p.barcode)}, {
+      format: 'CODE128', width: 1.5, height: 26,
+      displayValue: true, fontSize: 9, margin: 2, textMargin: 1,
+    });
+  }
+};
+<\/script>
+</body></html>`;
+  };
+
+  win.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="utf-8">
+    <title>x</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: Arial, sans-serif; background: #ddd; color: #111; }
+
+      .controls {
+        background: #fff; border-bottom: 2px solid #ddd;
+        padding: 12px 16px; display: flex; flex-wrap: wrap;
+        gap: 16px; align-items: flex-end;
       }
-    };
-    window.addEventListener('message', handleMessage);
+      .grp { display: flex; flex-direction: column; gap: 4px; }
+      .grp > span { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#555; }
+      .grp input[type=number] { width:70px; padding:6px 8px; border:1px solid #ccc; border-radius:4px; font-size:14px; font-weight:700; }
+      .grp input[type=date]   { width:148px; padding:6px 8px; border:1px solid #ccc; border-radius:4px; font-size:13px; }
+      .toggle-lbl { display:flex; align-items:center; gap:7px; font-size:12px; font-weight:700; color:#222; cursor:pointer; }
+      .toggle-lbl input[type=checkbox] { width:15px; height:15px; accent-color:#2563eb; }
+      .date-row { display:flex; align-items:center; gap:8px; margin-top:5px; margin-left:22px; }
+      .date-row > span { font-size:10px; font-weight:700; text-transform:uppercase; color:#666; }
 
-    const saved = loadBarcodeSettings();
+      .printer-select { padding:6px 8px; border:1.5px solid #ccc; border-radius:4px; font-size:13px; min-width:200px; background:#fff; cursor:pointer; }
+      .printer-select.saved { border-color:#16a34a; color:#15803d; font-weight:700; }
+      .printer-badge { font-size:10px; color:#16a34a; font-weight:700; display:none; margin-top:2px; }
 
-    // TSC TTP-244 Pro: 203 DPI, common label 100×50mm
-    // The physical label is ~100mm wide × 50mm tall.
-    // The white printable area (right side) is ~62mm wide.
-    // We default labelWidth=60, labelHeight=48 to fit inside that white area.
-    const d = {
-      copies:        saved.copies        ?? 1,
-      topOffset:     saved.topOffset     ?? 0,
-      leftOffset:    saved.leftOffset    ?? 0,
-      labelWidth:    saved.labelWidth    ?? 60,   // mm
-      labelHeight:   saved.labelHeight   ?? 48,   // mm
-      bcHeight:      saved.bcHeight      ?? 36,   // px (barcode bar height)
-      includePacked: saved.includePacked ?? false,
-      packedDate:    saved.packedDate    || '',
-      includeExpiry: saved.includeExpiry ?? false,
-      expiryDate:    saved.expiryDate    || '',
-    };
+      .btn-print { padding:10px 28px; background:#2563eb; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:800; cursor:pointer; align-self:flex-end; }
+      .btn-print:hover    { background:#1d4ed8; }
+      .btn-print:disabled { background:#93c5fd; cursor:not-allowed; }
 
-    const win = window.open('', '_blank', 'width=740,height=720');
-    if (!win) { toast.error('Popup blocked. Please allow popups.'); return; }
+      .preview { padding:20px; display:flex; flex-wrap:wrap; gap:10px; background:#bbb; }
+      .lbl {
+        background:#fff; border:1.5px dashed #999;
+        width:62mm; height:50mm;
+        display:flex; flex-direction:column; align-items:center;
+        justify-content:center; text-align:center;
+        padding:5px 8px; overflow:hidden;
+      }
+      .lbl-name { font-size:13px; font-weight:900; text-transform:uppercase; letter-spacing:0.04em; line-height:1.2; margin-bottom:5px; word-break:break-word; }
+      .lbl-date { font-size:11.5px; font-weight:700; color:#111; line-height:1.9; }
+      .lbl-rate { font-size:17px; font-weight:900; color:#000; margin-top:5px; margin-bottom:5px; line-height:1.1; }
+      .lbl-bc   { max-width:100%; display:block; }
+    </style>
+  </head><body>
 
-    // default packed date = today
-    const todayISO = new Date().toISOString().split('T')[0];
+  <div class="controls">
+    <div class="grp">
+      <span>Copies</span>
+      <input type="number" id="copies" value="${d.copies}" min="1" max="200" oninput="render()">
+    </div>
 
-    win.document.write(`<!DOCTYPE html><html><head>
-      <meta charset="utf-8">
-      <title>Barcode — ${p.name}</title>
-      <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
-      <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Arial, sans-serif; font-size: 13px; background: #efefef; color: #111; }
-
-        /* ── Control panel ── */
-        .controls {
-          background: #fff;
-          border-bottom: 2px solid #ccc;
-          padding: 10px 14px;
-          display: flex;
-          flex-direction: column;
-          gap: 9px;
-        }
-        .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
-        .grp { display: flex; flex-direction: column; gap: 3px; }
-        .grp > span {
-          font-size: 10px; font-weight: 700; text-transform: uppercase;
-          letter-spacing: .04em; color: #555;
-        }
-        .grp input[type=number] {
-          width: 76px; padding: 5px 7px;
-          border: 1px solid #ccc; border-radius: 4px; font-size: 13px;
-        }
-        .grp input[type=date] {
-          width: 148px; padding: 5px 7px;
-          border: 1px solid #ccc; border-radius: 4px; font-size: 13px;
-        }
-
-        /* ── Date section ── */
-        .date-section {
-          display: flex; flex-wrap: wrap; gap: 20px;
-          padding: 8px 0; border-top: 1px solid #e5e5e5;
-        }
-        .date-block { display: flex; flex-direction: column; gap: 5px; }
-        .toggle-lbl {
-          display: flex; align-items: center; gap: 7px;
-          font-size: 12px; font-weight: 700; color: #222; cursor: pointer; user-select: none;
-        }
-        .toggle-lbl input[type=checkbox] { width: 15px; height: 15px; accent-color: #2563eb; cursor: pointer; }
-        .date-row {
-          display: flex; align-items: center; gap: 8px; margin-left: 22px;
-        }
-        .date-row > span { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #666; }
-
-        /* ── Buttons ── */
-        .btn-row {
-          display: flex; gap: 8px; align-items: center;
-          padding-top: 6px; border-top: 1px solid #e5e5e5;
-        }
-        .btn-print {
-          padding: 8px 22px; background: #2563eb; color: #fff;
-          border: none; border-radius: 5px; font-size: 13px; font-weight: 700; cursor: pointer;
-        }
-        .btn-print:hover { background: #1d4ed8; }
-        .btn-save {
-          padding: 8px 16px; background: #16a34a; color: #fff;
-          border: none; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer;
-        }
-        .btn-save:hover { background: #15803d; }
-        .saved  { font-size: 11px; color: #16a34a; font-weight: 700; display: none; }
-        .dirty  { font-size: 11px; color: #b45309; }
-
-        /* ── Preview / print area ── */
-        .preview {
-          padding: 20px; display: flex; flex-wrap: wrap; gap: 12px;
-          background: #ddd; min-height: 80px;
-        }
-
-        /* Label box — mirrors physical white area of the TSC label */
-        .lbl {
-          background: #fff;
-          border: 1px solid #aaa;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 3px 5px;
-          text-align: center;
-          /* width & height driven by JS */
-        }
-        .lbl-name  { font-size: 10px; font-weight: 800; line-height: 1.2; margin-bottom: 1px; word-break: break-word; }
-        .lbl-price { font-size: 12px; font-weight: 900; margin-top: 2px; }
-        .lbl-date  { font-size: 9px;  font-weight: 700; color: #222; margin-top: 1px; line-height: 1.4; }
-
-        /* Print: hide controls, remove gaps */
-        @media print {
-          .controls { display: none !important; }
-          body, .preview { background: #fff; padding: 0; margin: 0; gap: 0; }
-          .lbl { border: none; }
-        }
-      </style>
-    </head><body>
-
-    <div class="controls">
-
-      <!-- Sizing row -->
-      <div class="row">
-        <div class="grp"><span>Copies</span>
-          <input type="number" id="copies" value="${d.copies}" min="1" max="200" oninput="render();dirty()">
-        </div>
-        <div class="grp"><span>Top (mm)</span>
-          <input type="number" id="topOff" value="${d.topOffset}" min="-50" max="100" oninput="render();dirty()">
-        </div>
-        <div class="grp"><span>Left (mm)</span>
-          <input type="number" id="leftOff" value="${d.leftOffset}" min="-50" max="100" oninput="render();dirty()">
-        </div>
-        <div class="grp"><span>Width (mm)</span>
-          <input type="number" id="lw" value="${d.labelWidth}" min="20" max="150" oninput="render();dirty()">
-        </div>
-        <div class="grp"><span>Height (mm)</span>
-          <input type="number" id="lh" value="${d.labelHeight}" min="10" max="150" oninput="render();dirty()">
-        </div>
-        <div class="grp"><span>BC Height (px)</span>
-          <input type="number" id="bch" value="${d.bcHeight}" min="10" max="120" oninput="render();dirty()">
-        </div>
-      </div>
-
-      <!-- Date toggles -->
-      <div class="date-section">
-
-        <!-- Packed Date -->
-        <div class="date-block">
-          <label class="toggle-lbl">
-            <input type="checkbox" id="chkPacked" ${d.includePacked ? 'checked' : ''}
-              onchange="togglePacked();render();dirty()">
-            📦 Packed Date
-          </label>
-          <div class="date-row" id="wrapPacked" style="display:${d.includePacked ? 'flex' : 'none'}">
-            <span>Date:</span>
-            <input type="date" id="packedDate" value="${d.packedDate || todayISO}" oninput="render();dirty()">
-          </div>
-        </div>
-
-        <!-- Expiry Date -->
-        <div class="date-block">
-          <label class="toggle-lbl">
-            <input type="checkbox" id="chkExpiry" ${d.includeExpiry ? 'checked' : ''}
-              onchange="toggleExpiry();render();dirty()">
-            📅 Expiry Date
-          </label>
-          <div class="date-row" id="wrapExpiry" style="display:${d.includeExpiry ? 'flex' : 'none'}">
-            <span>Date:</span>
-            <input type="date" id="expiryDate" value="${d.expiryDate}" oninput="render();dirty()">
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Action buttons -->
-      <div class="btn-row">
-        <button class="btn-print" onclick="saveThenPrint()">🖨️ Save &amp; Print</button>
-        <button class="btn-save"  onclick="save()">💾 Save Settings</button>
-        <span class="saved" id="savedBadge">✓ Saved!</span>
-        <span class="dirty" id="dirtyNote"></span>
+    <div class="grp">
+      <label class="toggle-lbl">
+        <input type="checkbox" id="chkPacked" ${d.includePacked ? 'checked' : ''} onchange="togglePacked();render()">
+        📦 Packed Date
+      </label>
+      <div class="date-row" id="wrapPacked" style="display:${d.includePacked ? 'flex' : 'none'}">
+        <span>Date:</span>
+        <input type="date" id="packedDate" value="${d.packedDate}" oninput="render()">
       </div>
     </div>
 
-    <div class="preview" id="preview"></div>
+    <div class="grp">
+      <label class="toggle-lbl">
+        <input type="checkbox" id="chkExpiry" ${d.includeExpiry ? 'checked' : ''} onchange="toggleExpiry();render()">
+        📅 Expiry Date
+      </label>
+      <div class="date-row" id="wrapExpiry" style="display:${d.includeExpiry ? 'flex' : 'none'}">
+        <span>Date:</span>
+        <input type="date" id="expiryDate" value="${d.expiryDate}" oninput="render()">
+      </div>
+    </div>
 
-    <script>
-      /* ── constants ─────────────────────────────────────── */
-      const STORE_KEY = 'barcode_print_settings';
-      const BC_VAL    = ${JSON.stringify(p.barcode)};
-      const PROD_NAME = ${JSON.stringify(p.name)};
-      const PRICE_STR = 'MRP: ₹${parseFloat(p.selling_price || 0).toFixed(2)}';
-      const TODAY     = '${todayISO}';
+    <div class="grp">
+      <span>🖨️ Printer</span>
+      <select class="printer-select" id="printerSelect" onchange="onPrinterChange()">
+        <option value="">Loading…</option>
+      </select>
+      <div class="printer-badge" id="printerBadge">✓ Saved as default</div>
+    </div>
 
-      /* ── toggle helpers ──────────────────────────────────── */
-      function togglePacked() {
-        const on = document.getElementById('chkPacked').checked;
-        document.getElementById('wrapPacked').style.display = on ? 'flex' : 'none';
-        if (on && !document.getElementById('packedDate').value)
-          document.getElementById('packedDate').value = TODAY;
-      }
-      function toggleExpiry() {
-        const on = document.getElementById('chkExpiry').checked;
-        document.getElementById('wrapExpiry').style.display = on ? 'flex' : 'none';
-      }
+    <button class="btn-print" id="printBtn" onclick="doPrint()">🖨️ Print</button>
+  </div>
 
-      /* ── date formatter DD-MMM-YYYY ─────────────────────── */
-      function fmtDate(s) {
-        if (!s) return '';
-        try {
-          return new Date(s + 'T00:00:00').toLocaleDateString('en-IN',
-            { day: '2-digit', month: 'short', year: 'numeric' });
-        } catch { return s; }
-      }
+  <div class="preview" id="preview"></div>
 
-      /* ── read control values ─────────────────────────────── */
-      function vals() {
-        return {
-          copies:        Math.max(1, Math.min(200, parseInt(document.getElementById('copies').value) || 1)),
-          topOffset:     parseInt(document.getElementById('topOff').value)  || 0,
-          leftOffset:    parseInt(document.getElementById('leftOff').value) || 0,
-          labelWidth:    parseInt(document.getElementById('lw').value)  || 60,
-          labelHeight:   parseInt(document.getElementById('lh').value)  || 48,
-          bcHeight:      parseInt(document.getElementById('bch').value) || 36,
-          includePacked: document.getElementById('chkPacked').checked,
-          packedDate:    document.getElementById('packedDate').value || '',
-          includeExpiry: document.getElementById('chkExpiry').checked,
-          expiryDate:    document.getElementById('expiryDate').value  || '',
-        };
-      }
+  <script>
+    const BC_VAL    = ${JSON.stringify(p.barcode)};
+    const PROD_NAME = ${JSON.stringify(p.name)};
+    const PRICE     = '${price}';
+    const TODAY     = '${todayISO}';
+    const STORE_KEY = 'barcode_print_settings';
 
-      /* ── save to localStorage + postMessage ──────────────── */
-      function save() {
-        const v = vals();
-        try { localStorage.setItem(STORE_KEY, JSON.stringify(v)); } catch(e) {}
-        try { window.opener.postMessage({ type: 'BARCODE_SETTINGS_SAVE', settings: v }, '*'); } catch(e) {}
-        const b = document.getElementById('savedBadge');
-        b.style.display = 'inline';
-        document.getElementById('dirtyNote').textContent = '';
-        setTimeout(() => { b.style.display = 'none'; }, 2500);
-      }
-      function dirty()       { document.getElementById('dirtyNote').textContent = '(unsaved changes)'; }
-      function saveThenPrint(){ save(); window.print(); }
-
-      /* ── render label previews ───────────────────────────── */
-      function render() {
-        const v = vals();
-        const preview = document.getElementById('preview');
-        preview.style.marginTop  = v.topOffset  + 'mm';
-        preview.style.marginLeft = v.leftOffset + 'mm';
-        preview.innerHTML = '';
-
-        for (let i = 0; i < v.copies; i++) {
-          const box = document.createElement('div');
-          box.className = 'lbl';
-          box.style.width  = v.labelWidth  + 'mm';
-          box.style.height = v.labelHeight + 'mm';
-
-          /* product name */
-          const n = document.createElement('div');
-          n.className = 'lbl-name';
-          n.textContent = PROD_NAME;
-          box.appendChild(n);
-
-          /* barcode SVG */
-          const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-          svg.setAttribute('id','bc'+i);
-          box.appendChild(svg);
-
-          /* price */
-          const pr = document.createElement('div');
-          pr.className = 'lbl-price';
-          pr.textContent = PRICE_STR;
-          box.appendChild(pr);
-
-          /* ── Packed date (ABOVE expiry) ── */
-          if (v.includePacked && v.packedDate) {
-            const pd = document.createElement('div');
-            pd.className = 'lbl-date';
-            pd.textContent = 'Packed: ' + fmtDate(v.packedDate);
-            box.appendChild(pd);
-          }
-
-          /* ── Expiry date ── */
-          if (v.includeExpiry && v.expiryDate) {
-            const ed = document.createElement('div');
-            ed.className = 'lbl-date';
-            ed.textContent = 'Exp: ' + fmtDate(v.expiryDate);
-            box.appendChild(ed);
-          }
-
-          preview.appendChild(box);
-
-          /* render barcode — narrower bars for small labels */
-          JsBarcode('#bc'+i, BC_VAL, {
-            format:       'CODE128',
-            width:        v.labelWidth < 50 ? 1.3 : 1.7,
-            height:       v.bcHeight,
-            displayValue: true,
-            fontSize:     9,
-            margin:       2,
-          });
+    async function loadPrinters() {
+      const api = window.opener?.electronAPI || window.electronAPI;
+      const sel = document.getElementById('printerSelect');
+      if (!api) { sel.innerHTML = '<option value="">— No printer API —</option>'; return; }
+      try {
+        const [printers, savedName] = await Promise.all([api.getPrinters(), api.loadDefaultPrinter()]);
+        sel.innerHTML = '';
+        if (!printers.length) { sel.innerHTML = '<option value="">— No printers found —</option>'; return; }
+        printers.forEach(pr => {
+          const opt = document.createElement('option');
+          opt.value = pr.name;
+          opt.textContent = pr.name + (pr.isDefault ? ' (system default)' : '');
+          sel.appendChild(opt);
+        });
+        if (savedName && printers.find(pr => pr.name === savedName)) {
+          sel.value = savedName;
+          sel.classList.add('saved');
+          document.getElementById('printerBadge').style.display = 'block';
+        } else {
+          const def = printers.find(pr => pr.isDefault);
+          if (def) sel.value = def.name;
         }
+      } catch(e) { sel.innerHTML = '<option value="">— Error —</option>'; }
+    }
+
+    async function onPrinterChange() {
+      const api = window.opener?.electronAPI || window.electronAPI;
+      const sel = document.getElementById('printerSelect');
+      if (!api || !sel.value) return;
+      try {
+        await api.saveDefaultPrinter(sel.value);
+        sel.classList.add('saved');
+        document.getElementById('printerBadge').style.display = 'block';
+      } catch(e) {}
+    }
+
+    function togglePacked() {
+      const on = document.getElementById('chkPacked').checked;
+      document.getElementById('wrapPacked').style.display = on ? 'flex' : 'none';
+      if (on && !document.getElementById('packedDate').value)
+        document.getElementById('packedDate').value = TODAY;
+    }
+    function toggleExpiry() {
+      const on = document.getElementById('chkExpiry').checked;
+      document.getElementById('wrapExpiry').style.display = on ? 'flex' : 'none';
+    }
+    function fmtDate(s) {
+      if (!s) return '';
+      try { const [y, m, dd] = s.split('-'); return dd + '/' + m + '/' + y; }
+      catch { return s; }
+    }
+    function vals() {
+      return {
+        copies:        Math.max(1, Math.min(200, parseInt(document.getElementById('copies').value) || 1)),
+        includePacked: document.getElementById('chkPacked').checked,
+        packedDate:    document.getElementById('packedDate').value || '',
+        includeExpiry: document.getElementById('chkExpiry').checked,
+        expiryDate:    document.getElementById('expiryDate').value || '',
+      };
+    }
+
+    function makePreviewLabel(v, bcId) {
+      const box = document.createElement('div');
+      box.className = 'lbl';
+      const name = document.createElement('div');
+      name.className = 'lbl-name'; name.textContent = PROD_NAME;
+      box.appendChild(name);
+      if (v.includePacked && v.packedDate) {
+        const pd = document.createElement('div');
+        pd.className = 'lbl-date'; pd.textContent = 'Pkd. Date : ' + fmtDate(v.packedDate);
+        box.appendChild(pd);
+      }
+      if (v.includeExpiry && v.expiryDate) {
+        const ed = document.createElement('div');
+        ed.className = 'lbl-date'; ed.textContent = 'Exp. Date : ' + fmtDate(v.expiryDate);
+        box.appendChild(ed);
+      }
+      const rate = document.createElement('div');
+      rate.className = 'lbl-rate'; rate.textContent = 'Rate : ' + PRICE;
+      box.appendChild(rate);
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('id', bcId); svg.className = 'lbl-bc';
+      box.appendChild(svg);
+      return box;
+    }
+
+    function render() {
+      const v = vals();
+      const preview = document.getElementById('preview');
+      preview.innerHTML = '';
+      for (let i = 0; i < v.copies; i++) preview.appendChild(makePreviewLabel(v, 'pbc' + i));
+      requestAnimationFrame(() => {
+        for (let i = 0; i < v.copies; i++) {
+          const el = document.getElementById('pbc' + i);
+          if (el) JsBarcode(el, BC_VAL, { format:'CODE128', width:1.5, height:26, displayValue:true, fontSize:9, margin:2, textMargin:1 });
+        }
+      });
+    }
+
+    function saveSettings(v) {
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(v)); } catch(e) {}
+      try { window.opener.postMessage({ type: 'BARCODE_SETTINGS_SAVE', settings: v }, '*'); } catch(e) {}
+    }
+
+    async function doPrint() {
+      const v = vals();
+      saveSettings(v);
+
+      const btn         = document.getElementById('printBtn');
+      const printerName = document.getElementById('printerSelect').value || '';
+      btn.disabled = true; btn.textContent = 'Printing…';
+
+      const fmtD = s => {
+        if (!s) return '';
+        try { const [y, m, dd] = s.split('-'); return dd + '/' + m + '/' + y; } catch { return s; }
+      };
+
+      // Build labels
+      let labelsHTML = '';
+      for (let i = 0; i < v.copies; i++) {
+        labelsHTML += '<div class="lbl">';
+        labelsHTML += '<div class="lbl-name">' + PROD_NAME.toUpperCase() + '</div>';
+        if (v.includePacked && v.packedDate) labelsHTML += '<div class="lbl-date">Pkd. Date : ' + fmtD(v.packedDate) + '</div>';
+        if (v.includeExpiry && v.expiryDate) labelsHTML += '<div class="lbl-date">Exp. Date : ' + fmtD(v.expiryDate) + '</div>';
+        labelsHTML += '<div class="lbl-rate">Rate : ' + PRICE + '</div>';
+        labelsHTML += '<svg id="bc' + i + '"></svg>';
+        labelsHTML += '</div>';
       }
 
-      window.onload = render;
-    <\/script>
-    </body></html>`);
-    win.document.close();
-  };
+      /*
+       * PRINT HTML LAYOUT:
+       * - @page size: 100mm 50mm  (no landscape keyword — Electron respects width>height)
+       * - html/body width: 100mm, height: 50mm
+       * - body margin-left: 38mm  ← this shifts ALL content past the yellow zone
+       * - .lbl width: 62mm        ← fills only the white zone
+       * No position:absolute, no left: offset — pure margin flow
+       */
+      const html =
+        '<!DOCTYPE html><html><head>' +
+        '<meta charset="utf-8"><title>x</title>' +
+        '<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\\/script>' +
+        '<style>' +
+        '*{box-sizing:border-box;margin:0;padding:0;}' +
+        '@page{size:100mm 50mm;margin:0;}' +
+        'html,body{margin:0;padding:0;width:100mm;height:50mm;}' +
+        'body{margin-left:38mm;width:62mm;}' +
+        '.lbl{width:62mm;height:50mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:5px 8px;overflow:hidden;page-break-after:always;break-after:page;}' +
+        '.lbl-name{font-family:Arial,sans-serif;font-size:13px;font-weight:900;text-transform:uppercase;letter-spacing:0.04em;line-height:1.2;margin-bottom:5px;word-break:break-word;}' +
+        '.lbl-date{font-family:Arial,sans-serif;font-size:11.5px;font-weight:700;color:#111;line-height:1.9;}' +
+        '.lbl-rate{font-family:Arial,sans-serif;font-size:17px;font-weight:900;color:#000;margin-top:5px;margin-bottom:5px;}' +
+        'svg{max-width:100%;display:block;}' +
+        '</style></head><body>' +
+        labelsHTML +
+        '<script>window.onload=function(){' +
+        'for(var i=0;i<' + v.copies + ';i++){' +
+        'JsBarcode("#bc"+i,' + JSON.stringify(BC_VAL) + ',' +
+        '{format:"CODE128",width:1.5,height:26,displayValue:true,fontSize:9,margin:2,textMargin:1});' +
+        '}};' +
+        '<\\/script></body></html>';
+
+      try {
+        const api = window.opener?.electronAPI || window.electronAPI;
+        if (api && api.silentPrint) {
+          await api.silentPrint(html, printerName, {
+            pageSize:        { width: 100000, height: 50000 }, // 100mm x 50mm in microns
+            landscape:       false,   // size already defined as landscape (width > height)
+            marginsType:     2,       // no margins
+            printBackground: true,
+            copies:          1,
+          });
+          btn.textContent = '✓ Printed!';
+          setTimeout(() => { btn.disabled = false; btn.textContent = '🖨️ Print'; }, 2000);
+          return;
+        }
+      } catch(err) {
+        console.error('silentPrint error:', err);
+        toast && toast.error('Print failed: ' + err.message);
+      }
+
+      btn.disabled = false; btn.textContent = '🖨️ Print';
+    }
+
+    window.onload = () => { render(); loadPrinters(); };
+  <\/script>
+  </body></html>`);
+  win.document.close();
+};
 
   const filtered = products.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) || p.barcode.includes(search)
@@ -926,7 +1020,7 @@ function PurchaseReturnModal({ onClose }) {
 }
 
 // ─── ProductSearchCell ────────────────────────────────────────────────────────
-function ProductSearchCell({ value, onSelect, onEnterNext }) {
+function ProductSearchCell({ value, onSelect, onEnterNext, excludeProductIds = [] }) {
   const [query,    setQuery]    = useState(value?.name || '');
   const [results,  setResults]  = useState([]);
   const [searching,setSearching]= useState(false);
@@ -941,10 +1035,15 @@ function ProductSearchCell({ value, onSelect, onEnterNext }) {
     try {
       const { data } = await searchProducts(q);
       const seen = new Set();
-      const unique = data.filter(p => { const key = p.batch_id ? `${p.id}_${p.batch_id}` : String(p.id); if (seen.has(key)) return false; seen.add(key); return true; });
+      const unique = data.filter(p => {
+        const key = p.batch_id ? `${p.id}_${p.batch_id}` : String(p.id);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return !excludeProductIds.includes(p.id);
+      });
       setResults(unique); setHiIdx(0); setOpen(unique.length > 0);
     } catch { setResults([]); setOpen(false); } finally { setSearching(false); }
-  }, []);
+  }, [excludeProductIds]);
 
   const handleChange = e => {
     const v = e.target.value; setQuery(v);
@@ -969,7 +1068,10 @@ function ProductSearchCell({ value, onSelect, onEnterNext }) {
       try {
         const { data } = await getProductByBarcode(q);
         const rows = Array.isArray(data) ? data : [data];
-        if (rows.length > 0) pick(rows[0]); else toast.error('Product not found');
+        const filtered = rows.filter(p => !excludeProductIds.includes(p.id));
+        if (filtered.length > 0) pick(filtered[0]);
+        else if (rows.length > 0) toast.error('Product already added in this purchase');
+        else toast.error('Product not found');
       } catch { toast.error('Product not found'); }
     }
   };
@@ -1022,7 +1124,6 @@ function ProductSearchCell({ value, onSelect, onEnterNext }) {
     </div>
   );
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 const emptyRow = () => ({
   _id: Date.now() + Math.random(),
@@ -1042,6 +1143,7 @@ export default function Purchase() {
   const [showProduct,    setShowProduct]    = useState(false);
   const [showVendor,     setShowVendor]     = useState(false);
   const [showPurReturn,  setShowPurReturn]  = useState(false);
+  const [roundOff, setRoundOff] = useState('');
   const [billDate, setBillDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   const cellRefs          = useRef({});
@@ -1071,9 +1173,10 @@ export default function Purchase() {
   };
 
   const handleClear = useCallback(() => {
-    setRows([emptyRow()]); setSelectedVendor(''); setIsPaid(false);
-    refreshPurchaseNumber(); refreshVendors();
-  }, []);
+  setRows([emptyRow()]); setSelectedVendor(''); setIsPaid(false);
+  setRoundOff('');
+  refreshPurchaseNumber(); refreshVendors();
+}, []);
 
   useEffect(() => {
     const handleKey = e => {
@@ -1175,6 +1278,7 @@ export default function Purchase() {
       const payload = {
         vendor: selectedVendor, is_paid: isPaid,
         bill_date: billDate,
+        round_off: roundOffNum,
         items: rows.map(r => {
           const qty = parseFloat(r.quantity); const totalQty = parseFloat(r.total_qty);
           return { product: r.product.id, purchase_unit: r.purchase_unit, quantity: qty, purchase_price: parseFloat(getBasePrice(r).toFixed(4)), tax: parseFloat(r.tax) || 0, tax_type: r.tax_type, mrp: parseFloat(r.mrp), selling_unit: r.selling_unit, selling_qty: r.purchase_unit === 'case' ? (totalQty / qty) : 1 };
@@ -1189,7 +1293,9 @@ export default function Purchase() {
     finally { setLoading(false); }
   };
 
-  const grandTotal = rows.reduce((s, r) => s + getRowTotalValue(r), 0);
+  const subTotal    = rows.reduce((s, r) => s + getRowTotalValue(r), 0);
+  const roundOffNum = parseFloat(roundOff) || 0;
+  const grandTotal  = subTotal + roundOffNum;
 
   const Fkey = ({ k }) => (
     <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(255,255,255,0.2)', borderRadius: 4, padding: '1px 5px', marginLeft: 6, fontFamily: 'monospace' }}>{k}</span>
@@ -1298,7 +1404,12 @@ export default function Purchase() {
                 return (
                   <tr key={row._id}>
                     <td style={{ padding: '6px 8px' }}>
-                      <ProductSearchCell value={row.product} onSelect={p => selectProduct(row._id, p)} onEnterNext={() => focusCell(row._id, 'unit')} />
+                      <ProductSearchCell
+                        value={row.product}
+                        onSelect={p => selectProduct(row._id, p)}
+                        onEnterNext={() => focusCell(row._id, 'unit')}
+                        excludeProductIds={rows.filter(r => r.product && r._id !== row._id).map(r => r.product.id)}
+                      />
                       {row.product && (
                         <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)', marginTop: 2 }}>
                           {row.product.barcode}
@@ -1377,13 +1488,54 @@ export default function Purchase() {
             </tbody>
           </table>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg2)' }}>
-          <button className="btn btn-secondary btn-sm" onClick={() => addRow()}>+ Add Item Row</button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-            <span style={{ color: 'var(--text3)', fontSize: 13 }}>{rows.length} item{rows.length !== 1 ? 's' : ''}</span>
-            <div>
-              <span style={{ color: 'var(--text3)', fontSize: 13, marginRight: 10 }}>Grand Total (incl. tax)</span>
-              <span style={{ fontFamily: 'var(--mono)', fontWeight: 800, fontSize: 20, color: 'var(--accent)' }}>{fmt(grandTotal)}</span>
+        <div style={{ borderTop: '1px solid var(--border)', background: 'var(--bg2)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '10px 16px', gap: 12, borderBottom: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 13, color: 'var(--text3)' }}>Sub Total</span>
+            <span style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 15, color: 'var(--text2)', minWidth: 100, textAlign: 'right' }}>{fmt(subTotal)}</span>
+           <span style={{ fontSize: 13, marginLeft: 24, color: roundOffNum !== 0 ? (roundOffNum > 0 ? 'var(--green)' : 'var(--red)') : 'var(--text3)', fontWeight: roundOffNum !== 0 ? 700 : 400 }}>
+            Round Off{roundOffNum !== 0 ? ` (${roundOffNum > 0 ? '+' : ''}${fmt(roundOffNum)})` : ''}
+          </span>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="number"
+                value={roundOff}
+                onChange={e => setRoundOff(e.target.value)}
+                onWheel={noWheel}
+                onKeyDown={noArrow}
+                placeholder="0.00"
+                step="0.01"
+                style={{
+                  width: 120,
+                  padding: '6px 10px',
+                  fontFamily: 'var(--mono)',
+                  fontSize: 14,
+                  fontWeight: 800,
+                  textAlign: 'right',
+                  borderColor: roundOffNum > 0 ? 'var(--green)' : roundOffNum < 0 ? 'var(--red)' : 'var(--border)',
+                  color: roundOffNum > 0 ? 'var(--green)' : roundOffNum < 0 ? 'var(--red)' : 'var(--text3)',
+                  borderWidth: roundOffNum !== 0 ? 2 : 1,
+                  borderStyle: 'solid',
+                  borderRadius: 'var(--radius)',
+                  background: roundOffNum > 0 ? 'rgba(22,163,74,0.06)' : roundOffNum < 0 ? 'rgba(220,38,38,0.06)' : undefined,
+                  transition: 'all 0.15s',
+                }}
+              />
+              {roundOff !== '' && (
+                <button onClick={() => setRoundOff('')}
+                  style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text3)' }}>✕</button>
+              )}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
+            <button className="btn btn-secondary btn-sm" onClick={() => addRow()}>+ Add Item Row</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+              <span style={{ color: 'var(--text3)', fontSize: 13 }}>{rows.length} item{rows.length !== 1 ? 's' : ''}</span>
+              <div>
+                <span style={{ color: 'var(--text3)', fontSize: 13, marginRight: 10 }}>Grand Total (incl. tax)</span>
+                <span style={{ fontFamily: 'var(--mono)', fontWeight: 800, fontSize: 20, color: 'var(--accent)' }}>{fmt(grandTotal)}</span>
+                
+                
+              </div>
             </div>
           </div>
         </div>

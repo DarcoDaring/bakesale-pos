@@ -29,7 +29,8 @@ from .serializers import (
 from .permissions import IsAdminUser
 from .kc_views import (
     KCSaleItemViewSet, KCBillViewSet, KCPurchaseViewSet,
-    KCStockViewSet, KCStoreItemViewSet, KCStoreIssueViewSet, KCReportView,
+    KCStockViewSet, KCStoreItemViewSet, KCStoreIssueViewSet,
+    KCReportView, KCClosingStockViewSet,
 )
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -180,7 +181,8 @@ class PurchaseBillViewSet(viewsets.ModelViewSet):
                 bill_taxable += base
                 bill_tax     += item_tax
 
-            bill_total = bill_taxable + bill_tax
+            round_off  = float(b.round_off or 0)
+            bill_total = bill_taxable + bill_tax + round_off
             grand_total += bill_total
             result.append({
                 'id':                   b.id,
@@ -190,6 +192,7 @@ class PurchaseBillViewSet(viewsets.ModelViewSet):
                 'date':                 b.date,
                 'total_purchase_price': round(bill_taxable, 2),
                 'total_tax':            round(bill_tax, 2),
+                'round_off':            round(round_off, 2),
                 'total_value':          round(bill_total, 2),
                 'item_count':           b.items.count(),
             })
@@ -230,7 +233,8 @@ class PurchaseBillViewSet(viewsets.ModelViewSet):
 
             bill_cgst  = bill_tax / 2
             bill_sgst  = bill_tax / 2
-            bill_total = bill_taxable + bill_tax
+            round_off  = float(b.round_off or 0)
+            bill_total = bill_taxable + bill_tax + round_off
 
             grand_taxable += bill_taxable
             grand_cgst    += bill_cgst
@@ -239,16 +243,17 @@ class PurchaseBillViewSet(viewsets.ModelViewSet):
             grand_total   += bill_total
 
             result.append({
-                'purchase_number': b.purchase_number,
-                'vendor_name':     b.vendor.name if b.vendor else '—',
-                'date':            b.date,
-                'taxable_amount':  round(bill_taxable, 2),
-                'cgst':            round(bill_cgst, 2),
-                'sgst':            round(bill_sgst, 2),
-                'total_tax':       round(bill_tax, 2),
-                'total_amount':    round(bill_total, 2),
-                'is_paid':         b.is_paid,
-            })
+            'purchase_number': b.purchase_number,
+            'vendor_name':     b.vendor.name if b.vendor else '—',
+            'date':            b.date,
+            'taxable_amount':  round(bill_taxable, 2),
+            'cgst':            round(bill_cgst, 2),
+            'sgst':            round(bill_sgst, 2),
+            'total_tax':       round(bill_tax, 2),
+            'round_off':       round(round_off, 2),
+            'total_amount':    round(bill_total, 2),
+            'is_paid':         b.is_paid,
+        })
 
         return Response({
             'bills':         result,

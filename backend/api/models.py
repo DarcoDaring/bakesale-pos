@@ -3,7 +3,7 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from .kc_models import (
     KCSaleItem, KCSaleSubItem, KCBill, KCBillLine,
     KCPurchase, KCPurchaseLine, KCStock, KCStockLine,
-    KCStoreItem, KCStoreIssue, KCStoreIssueLine,
+    KCStoreItem, KCStoreIssue, KCStoreIssueLine, KCClosingStock,
 )
 
 class UserManager(BaseUserManager):
@@ -112,6 +112,7 @@ class PurchaseBill(models.Model):
     purchase_number = models.CharField(max_length=50, unique=True, blank=True)
     vendor          = models.ForeignKey(Vendor, on_delete=models.SET_NULL, null=True, blank=True, related_name='purchases')
     is_paid         = models.BooleanField(default=True)
+    round_off       = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     date            = models.DateTimeField(auto_now_add=True)
     created_by      = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
 
@@ -577,3 +578,5 @@ class InternalSaleBill(models.Model):
 
     def __str__(self):
         return f"InternalSale #{self.sale_number}"
+    
+
