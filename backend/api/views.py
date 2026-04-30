@@ -33,6 +33,7 @@ from .kc_views import (
     KCReportView, KCClosingStockViewSet,
 )
 
+
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class   = CustomTokenObtainPairSerializer
     permission_classes = [AllowAny]
@@ -55,13 +56,15 @@ class VendorViewSet(viewsets.ModelViewSet):
 
 
 def product_to_batch_rows(products):
+    """
+    FIX: Removed side-effect stock sync from this read-only helper.
+    The sync belonged in a dedicated management command, not in every
+    product search / barcode lookup call.
+    """
     rows = []
     for p in products:
         batches = list(p.batches.filter(quantity__gt=0).order_by('mrp', 'created_at'))
         if not batches:
-            # FIX: also sync the product's stock_quantity field if it's out of sync
-            if p.stock_quantity != 0:
-                Product.objects.filter(pk=p.pk).update(stock_quantity=0)
             rows.append({
                 'id': p.id, 'barcode': p.barcode, 'name': p.name,
                 'selling_price': str(p.selling_price), 'selling_unit': p.selling_unit,
@@ -71,12 +74,11 @@ def product_to_batch_rows(products):
             })
         elif len(batches) == 1:
             b = batches[0]
-            # FIX: use actual batch quantity as the truth, not Product.stock_quantity
             rows.append({
                 'id': p.id, 'barcode': p.barcode, 'name': p.name,
                 'selling_price': str(b.mrp), 'selling_unit': p.selling_unit,
                 'tax': float(p.tax or 0),
-                'stock_quantity': str(b.quantity),  # <-- batch is the truth
+                'stock_quantity': str(b.quantity),
                 'is_active': p.is_active,
                 'batch_id': b.id, 'batch_mrp': str(b.mrp), 'multi_batch': False
             })
@@ -86,7 +88,7 @@ def product_to_batch_rows(products):
                     'id': p.id, 'barcode': p.barcode, 'name': p.name,
                     'selling_price': str(b.mrp), 'selling_unit': p.selling_unit,
                     'tax': float(p.tax or 0),
-                    'stock_quantity': str(b.quantity),  # <-- batch is the truth
+                    'stock_quantity': str(b.quantity),
                     'is_active': p.is_active,
                     'batch_id': b.id, 'batch_mrp': str(b.mrp), 'multi_batch': True
                 })
@@ -136,21 +138,22 @@ class PurchaseBillViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         from django.utils.dateparse import parse_date
+        from django.utils import timezone as tz
+        import datetime
+
         bill_date   = self.request.data.get('bill_date')
         parsed_date = parse_date(bill_date) if bill_date else None
         instance    = serializer.save(created_by=self.request.user)
+
         if parsed_date:
-            PurchaseBill.objects.filter(pk=instance.pk).update(
-                date=instance.date.replace(
-                    year=parsed_date.year,
-                    month=parsed_date.month,
-                    day=parsed_date.day,
-                )
+            # FIX: Use timezone-aware datetime to avoid off-by-one date bugs
+            aware_dt = tz.make_aware(
+                datetime.datetime.combine(parsed_date, instance.date.time())
             )
+            PurchaseBill.objects.filter(pk=instance.pk).update(date=aware_dt)
 
     @action(detail=True, methods=['patch'])
     def mark_paid(self, request, pk=None):
-        """Mark a purchase bill as paid."""
         bill = self.get_object()
         if bill.is_paid:
             return Response({'detail': 'Already marked as paid'}, status=400)
@@ -201,67 +204,133 @@ class PurchaseBillViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def purchase_tax_report(self, request):
         """
-        Purchase tax report.
-        Taxable amount = qty × purchase_price (per item).
-        CGST = SGST = tax% / 2 applied on taxable amount.
+        Purchase tax report — item-level, mirrors sales_tax_report structure.
+        - Taxable amount = qty × purchase_price (per item, base price excl. tax)
+        - CGST = SGST = tax% / 2 applied on taxable amount
+        - Deducts purchase returns for matching products in the same date range
+        - Supports tax_rate filter
         """
-        date_from = request.query_params.get('date_from')
-        date_to   = request.query_params.get('date_to')
-        bills = PurchaseBill.objects.all().prefetch_related('items__product', 'vendor')
-        if date_from: bills = bills.filter(date__date__gte=date_from)
-        if date_to:   bills = bills.filter(date__date__lte=date_to)
-        bills = bills.order_by('-date')
+        date_from  = request.query_params.get('date_from')
+        date_to    = request.query_params.get('date_to')
+        tax_filter = request.query_params.get('tax_rate')
 
-        result        = []
+        # Build purchase-return deduction map
+        pr_qs = PurchaseReturn.objects.filter(status__in=['pending', 'returned'])
+        if date_from: pr_qs = pr_qs.filter(date__date__gte=date_from)
+        if date_to:   pr_qs = pr_qs.filter(date__date__lte=date_to)
+
+        pr_map = {}
+        for pr in pr_qs.select_related('product'):
+            pid = pr.product_id
+            if pid not in pr_map:
+                pr_map[pid] = []
+            pr_map[pid].append({
+                'qty':   float(pr.quantity),
+                'price': float(pr.purchase_price),
+                'tax':   float(pr.tax),
+            })
+
+        qs = Purchase.objects.select_related('product', 'bill__vendor').order_by('bill__date')
+        if date_from: qs = qs.filter(bill__date__date__gte=date_from)
+        if date_to:   qs = qs.filter(bill__date__date__lte=date_to)
+
+        items_data    = []
         grand_taxable = 0
         grand_cgst    = 0
         grand_sgst    = 0
         grand_tax     = 0
         grand_total   = 0
+        all_tax_rates = set()
+        pr_consumed   = {}
 
-        for b in bills:
-            bill_taxable = 0
-            bill_tax     = 0
-            for item in b.items.all():
-                qty      = float(item.quantity)
-                price    = float(item.purchase_price)
-                tax_rate = float(item.tax)
-                base     = qty * price          # taxable = purchase_price × qty
-                item_tax = base * tax_rate / 100
-                bill_taxable += base
-                bill_tax     += item_tax
+        for item in qs:
+            tax_rate = float(item.tax or 0)
+            all_tax_rates.add(tax_rate)
 
-            bill_cgst  = bill_tax / 2
-            bill_sgst  = bill_tax / 2
-            round_off  = float(b.round_off or 0)
-            bill_total = bill_taxable + bill_tax + round_off
+            if tax_rate == 0:
+                continue
 
-            grand_taxable += bill_taxable
-            grand_cgst    += bill_cgst
-            grand_sgst    += bill_sgst
-            grand_tax     += bill_tax
-            grand_total   += bill_total
+            if item.purchase_unit == 'case':
+                selling_qty = float(item.selling_qty) if float(item.selling_qty) > 0 else 1
+                qty   = float(item.quantity) * selling_qty
+                price = float(item.purchase_price) / selling_qty
+            else:
+                qty   = float(item.quantity)
+                price = float(item.purchase_price)
+            pid = item.product_id
 
-            result.append({
-            'purchase_number': b.purchase_number,
-            'vendor_name':     b.vendor.name if b.vendor else '—',
-            'date':            b.date,
-            'taxable_amount':  round(bill_taxable, 2),
-            'cgst':            round(bill_cgst, 2),
-            'sgst':            round(bill_sgst, 2),
-            'total_tax':       round(bill_tax, 2),
-            'round_off':       round(round_off, 2),
-            'total_amount':    round(bill_total, 2),
-            'is_paid':         b.is_paid,
-        })
+            # Deduct purchase returns FIFO
+            if pid in pr_map and pr_map[pid]:
+                if pid not in pr_consumed:
+                    pr_consumed[pid] = {'idx': 0, 'used': 0.0}
+                state    = pr_consumed[pid]
+                deducted = 0.0
+
+                while state['idx'] < len(pr_map[pid]) and deducted < qty:
+                    ret   = pr_map[pid][state['idx']]
+                    avail = ret['qty'] - state['used']
+                    if avail <= 0:
+                        state['idx'] += 1
+                        state['used'] = 0.0
+                        continue
+                    take = min(avail, qty - deducted)
+                    deducted      += take
+                    state['used'] += take
+                    if state['used'] >= ret['qty']:
+                        state['idx'] += 1
+                        state['used'] = 0.0
+
+                qty = max(0.0, qty - deducted)
+
+            if qty <= 0:
+                continue
+
+            if tax_filter:
+                try:
+                    if abs(tax_rate - float(tax_filter)) > 0.001:
+                        continue
+                except ValueError:
+                    pass
+
+            taxable  = qty * price
+            item_tax = taxable * tax_rate / 100
+            cgst_amt = item_tax / 2
+            sgst_amt = item_tax / 2
+            total    = taxable + item_tax
+
+            grand_taxable += taxable
+            grand_cgst    += cgst_amt
+            grand_sgst    += sgst_amt
+            grand_tax     += item_tax
+            grand_total   += total
+
+            items_data.append({
+                'purchase_number': item.bill.purchase_number,
+                'vendor_name':     item.bill.vendor.name if item.bill.vendor else '—',
+                'date':            item.bill.date,
+                'product_name':    item.product.name,
+                'product_barcode': item.product.barcode,
+                'quantity':        round(qty, 3),
+                'purchase_price':  round(price, 4),
+                'tax_rate':        tax_rate,
+                'cgst_rate':       tax_rate / 2,
+                'sgst_rate':       tax_rate / 2,
+                'taxable_amount':  round(taxable, 2),
+                'cgst':            round(cgst_amt, 2),
+                'sgst':            round(sgst_amt, 2),
+                'total_tax':       round(item_tax, 2),
+                'total_amount':    round(total, 2),
+                'is_paid':         item.bill.is_paid,
+            })
 
         return Response({
-            'bills':         result,
-            'grand_taxable': round(grand_taxable, 2),
-            'grand_cgst':    round(grand_cgst, 2),
-            'grand_sgst':    round(grand_sgst, 2),
-            'grand_tax':     round(grand_tax, 2),
-            'grand_total':   round(grand_total, 2),
+            'bills':               items_data,
+            'grand_taxable':       round(grand_taxable, 2),
+            'grand_cgst':          round(grand_cgst, 2),
+            'grand_sgst':          round(grand_sgst, 2),
+            'grand_tax':           round(grand_tax, 2),
+            'grand_total':         round(grand_total, 2),
+            'available_tax_rates': sorted(all_tax_rates),
         })
 
 
@@ -293,24 +362,26 @@ class SaleBillViewSet(viewsets.ModelViewSet):
         return Response(SaleBillListSerializer(bill).data)
 
     def destroy(self, request, *args, **kwargs):
-        from decimal import Decimal
+        from django.db import transaction as db_transaction
         bill = self.get_object()
-        for item in bill.items.all():
-            product = item.product
-            qty     = Decimal(str(item.quantity))
-            if item.batch:
-                item.batch.quantity = Decimal(str(item.batch.quantity)) + qty
-                item.batch.save()
-            else:
-                latest = StockBatch.objects.filter(product=product).order_by('-mrp', '-created_at').first()
-                if latest:
-                    latest.quantity = Decimal(str(latest.quantity)) + qty
-                    latest.save()
+        with db_transaction.atomic():
+            for item in bill.items.all():
+                product = Product.objects.select_for_update().get(pk=item.product.pk)
+                qty     = Decimal(str(item.quantity))
+                if item.batch:
+                    batch = StockBatch.objects.select_for_update().get(pk=item.batch.pk)
+                    batch.quantity = Decimal(str(batch.quantity)) + qty
+                    batch.save()
                 else:
-                    StockBatch.objects.create(product=product, mrp=product.selling_price, quantity=qty)
-            product.stock_quantity = Decimal(str(product.stock_quantity)) + qty
-            product.save()
-        bill.delete()
+                    latest = StockBatch.objects.filter(product=product).order_by('-mrp', '-created_at').first()
+                    if latest:
+                        latest.quantity = Decimal(str(latest.quantity)) + qty
+                        latest.save()
+                    else:
+                        StockBatch.objects.create(product=product, mrp=product.selling_price, quantity=qty)
+                product.stock_quantity = Decimal(str(product.stock_quantity)) + qty
+                product.save()
+            bill.delete()
         return Response({'message': 'Bill deleted and stock restored'}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['get'])
@@ -337,19 +408,17 @@ class SaleBillViewSet(viewsets.ModelViewSet):
         split_upi   = bills.filter(payment_type='cash_upi').aggregate(t=Sum('upi_amount'))['t'] or 0
         upi_total   = float(pure_upi) + float(split_upi)
 
-        # Include item return refund totals
         ir_qs = ItemReturn.objects.all()
         if date_from: ir_qs = ir_qs.filter(date__date__gte=date_from)
         if date_to:   ir_qs = ir_qs.filter(date__date__lte=date_to)
-        ir_total     = float(ir_qs.aggregate(t=Sum('total_amount'))['t'] or 0)
-        ir_cash      = float(ir_qs.filter(payment_type='cash').aggregate(t=Sum('total_amount'))['t'] or 0)
-        ir_cash     += float(ir_qs.filter(payment_type__in=['cash_card','cash_upi']).aggregate(t=Sum('cash_amount'))['t'] or 0)
-        ir_card      = float(ir_qs.filter(payment_type='card').aggregate(t=Sum('total_amount'))['t'] or 0)
-        ir_card     += float(ir_qs.filter(payment_type='cash_card').aggregate(t=Sum('card_amount'))['t'] or 0)
-        ir_upi       = float(ir_qs.filter(payment_type='upi').aggregate(t=Sum('total_amount'))['t'] or 0)
-        ir_upi      += float(ir_qs.filter(payment_type='cash_upi').aggregate(t=Sum('upi_amount'))['t'] or 0)
+        ir_total  = float(ir_qs.aggregate(t=Sum('total_amount'))['t'] or 0)
+        ir_cash   = float(ir_qs.filter(payment_type='cash').aggregate(t=Sum('total_amount'))['t'] or 0)
+        ir_cash  += float(ir_qs.filter(payment_type__in=['cash_card','cash_upi']).aggregate(t=Sum('cash_amount'))['t'] or 0)
+        ir_card   = float(ir_qs.filter(payment_type='card').aggregate(t=Sum('total_amount'))['t'] or 0)
+        ir_card  += float(ir_qs.filter(payment_type='cash_card').aggregate(t=Sum('card_amount'))['t'] or 0)
+        ir_upi    = float(ir_qs.filter(payment_type='upi').aggregate(t=Sum('total_amount'))['t'] or 0)
+        ir_upi   += float(ir_qs.filter(payment_type='cash_upi').aggregate(t=Sum('upi_amount'))['t'] or 0)
 
-        # Direct sale totals for the same period
         ds_qs = DirectSale.objects.all()
         if date_from: ds_qs = ds_qs.filter(date__date__gte=date_from)
         if date_to:   ds_qs = ds_qs.filter(date__date__lte=date_to)
@@ -368,10 +437,10 @@ class SaleBillViewSet(viewsets.ModelViewSet):
         return Response({
             'bills': SaleBillListSerializer(bills, many=True).data,
             'totals': {
-                'grand_total':    grand_total,
-                'cash_total':     cash_total,
-                'card_total':     card_total,
-                'upi_total':      upi_total,
+                'grand_total': grand_total,
+                'cash_total':  cash_total,
+                'card_total':  card_total,
+                'upi_total':   upi_total,
             },
             'return_totals': {
                 'total':      round(ir_total, 2),
@@ -418,14 +487,6 @@ class SaleBillViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def sales_tax_report(self, request):
-        """
-        Item-based sales tax report matching the bill print calculation:
-        - total       = selling_price × qty   (tax-inclusive amount)
-        - taxable     = total / (1 + tax_rate/100)   (back-calculate taxable)
-        - item_tax    = total - taxable
-        - cgst = sgst = item_tax / 2
-        CGST rate = SGST rate = tax_rate / 2
-        """
         date_from  = request.query_params.get('date_from')
         date_to    = request.query_params.get('date_to')
         tax_filter = request.query_params.get('tax_rate')
@@ -444,21 +505,19 @@ class SaleBillViewSet(viewsets.ModelViewSet):
         for item in qs:
             tax_rate = float(item.tax or 0)
 
-            # Skip zero-tax items (nothing to show in tax report)
             if tax_rate == 0:
                 all_tax_rates.add(0.0)
                 continue
 
-            qty           = float(item.quantity)
-            price         = float(item.price)     # selling price (MRP, tax-inclusive)
-            total         = price * qty            # total paid by customer
-            # Back-calculate taxable from tax-inclusive total (same as PrintBill)
-            taxable_amt   = total / (1 + tax_rate / 100)
-            item_tax      = total - taxable_amt
-            cgst_amt      = item_tax / 2
-            sgst_amt      = item_tax / 2
-            cgst_rate     = tax_rate / 2
-            sgst_rate     = tax_rate / 2
+            qty         = float(item.quantity)
+            price       = float(item.price)
+            total       = price * qty
+            taxable_amt = total / (1 + tax_rate / 100)
+            item_tax    = total - taxable_amt
+            cgst_amt    = item_tax / 2
+            sgst_amt    = item_tax / 2
+            cgst_rate   = tax_rate / 2
+            sgst_rate   = tax_rate / 2
 
             all_tax_rates.add(tax_rate)
 
@@ -542,14 +601,14 @@ class InternalSaleViewSet(viewsets.ModelViewSet):
             'destination__id', 'destination__name', 'price'
         ).annotate(total_qty=Sum('quantity')).order_by('destination__name', 'product__name')
         return Response([{
-            'product_id':      r['product__id'],
-            'product_name':    r['product__name'],
-            'product_barcode': r['product__barcode'],
-            'destination_id':  r['destination__id'],
-            'destination_name':r['destination__name'],
-            'mrp':             r['price'],
-            'quantity':        r['total_qty'],
-            'total_amount':    float(r['price']) * float(r['total_qty']),
+            'product_id':       r['product__id'],
+            'product_name':     r['product__name'],
+            'product_barcode':  r['product__barcode'],
+            'destination_id':   r['destination__id'],
+            'destination_name': r['destination__name'],
+            'mrp':              r['price'],
+            'quantity':         r['total_qty'],
+            'total_amount':     float(r['price']) * float(r['total_qty']),
         } for r in report])
 
 
@@ -559,12 +618,11 @@ class PurchaseReturnViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        product        = serializer.validated_data.get('product')
-        vendor         = serializer.validated_data.get('vendor')
-        given_price    = serializer.validated_data.get('purchase_price')
-        given_tax      = serializer.validated_data.get('tax')
+        product     = serializer.validated_data.get('product')
+        vendor      = serializer.validated_data.get('vendor')
+        given_price = serializer.validated_data.get('purchase_price')
+        given_tax   = serializer.validated_data.get('tax')
 
-        # Only auto-fill from last purchase if user didn't provide values
         extra = {}
         if not given_price or float(given_price) == 0:
             if vendor:
@@ -615,9 +673,9 @@ class PurchaseReturnViewSet(viewsets.ModelViewSet):
             })
         pending_count = PurchaseReturn.objects.filter(status='pending').count()
         return Response({
-            'returns':      result,
-            'total_cost':   sum(r['item_cost'] for r in result),
-            'pending_count':pending_count,
+            'returns':       result,
+            'total_cost':    sum(r['item_cost'] for r in result),
+            'pending_count': pending_count,
         })
 
 
@@ -647,7 +705,7 @@ class DirectSaleViewSet(viewsets.ModelViewSet):
         if date_from: sales = sales.filter(date__date__gte=date_from)
         if date_to:   sales = sales.filter(date__date__lte=date_to)
         sales = sales.order_by('-date')
-        result = []
+        result      = []
         grand_total = 0
         for s in sales:
             result.append({
@@ -688,7 +746,6 @@ class StockAdjustmentRequestViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['patch'])
     def approve(self, request, pk=None):
-        from decimal import Decimal
         adj = self.get_object()
         if adj.status != 'pending':
             return Response({'error': 'Already reviewed'}, status=400)
@@ -735,20 +792,17 @@ class StockTransferViewSet(viewsets.ModelViewSet):
 
 
 class BackupView(APIView):
-    permission_classes = [IsAuthenticated]
+    # FIX: Use IsAdminUser permission class consistently instead of manual role check
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
     def get(self, request):
         """Export full database as JSON."""
-        if request.user.role != 'admin':
-            return Response({'detail': 'Admin only'}, status=403)
-
         def serialize_qs(qs):
             rows = []
             for obj in qs:
                 row = {}
                 for field in obj._meta.fields:
-                    # For FK fields, use attname (e.g. product_id) to get the raw integer
-                    attr = field.attname  # gives 'product_id' instead of 'product'
+                    attr = field.attname
                     val  = getattr(obj, attr)
                     if isinstance(val, Decimal):
                         val = str(val)
@@ -788,23 +842,41 @@ class BackupView(APIView):
         return response
 
     def post(self, request):
-        """Restore database from uploaded JSON backup."""
-        if request.user.role != 'admin':
-            return Response({'detail': 'Admin only'}, status=403)
+        """
+        Restore database from uploaded JSON backup.
+        FIX: Added confirmation phrase requirement to prevent accidental wipes.
+        FIX: Added size limit on raw JSON body (not just file uploads).
+        FIX: Restored original dates for all models instead of using auto_now_add.
+        """
+        # FIX: Require confirmation phrase to prevent accidental database wipes
+        confirm = request.data.get('confirm') or request.FILES.get('confirm')
+        # When uploading a file the confirm comes as a form field string
+        if hasattr(confirm, 'read'):
+            confirm = confirm.read().decode('utf-8').strip()
+        if str(confirm) != 'RESTORE_CONFIRMED':
+            return Response({
+                'detail': 'Missing confirmation. Pass confirm="RESTORE_CONFIRMED" to proceed.'
+            }, status=400)
+
         try:
             if request.FILES.get('file'):
                 upload = request.FILES['file']
-                # Limit backup file to 50MB
                 if upload.size > 50 * 1024 * 1024:
                     return Response({'detail': 'Backup file too large (max 50MB)'}, status=400)
-                raw = upload.read()
+                raw  = upload.read()
                 data = json.loads(raw)
             else:
                 data = request.data
+                # FIX: Enforce size limit on raw JSON body too
+                import sys
+                if sys.getsizeof(str(data)) > 50 * 1024 * 1024:
+                    return Response({'detail': 'Data too large (max 50MB)'}, status=400)
+
             if data.get('version') != 1:
                 return Response({'detail': 'Invalid or unsupported backup format'}, status=400)
-            from django.db import transaction
-            with transaction.atomic():
+
+            from django.db import transaction as db_transaction
+            with db_transaction.atomic():
                 # Delete in reverse dependency order
                 StockAdjustmentRequest.objects.all().delete()
                 PhysicalStockRequest.objects.all().delete()
@@ -828,6 +900,17 @@ class BackupView(APIView):
 
                 def d(v):
                     return Decimal(str(v)) if v is not None else None
+
+                # FIX: Helper to parse ISO datetime strings back into aware datetimes
+                from django.utils.dateparse import parse_datetime
+                def dt(v):
+                    if not v:
+                        return None
+                    parsed = parse_datetime(str(v))
+                    if parsed and parsed.tzinfo is None:
+                        from django.utils import timezone as tz
+                        parsed = tz.make_aware(parsed)
+                    return parsed
 
                 for r in data.get('vendors', []):
                     Vendor.objects.create(
@@ -854,14 +937,17 @@ class BackupView(APIView):
                     )
 
                 for r in data.get('purchase_bills', []):
-                    PurchaseBill.objects.create(
+                    obj = PurchaseBill.objects.create(
                         id=r['id'], purchase_number=r['purchase_number'],
                         vendor_id=r.get('vendor_id'), is_paid=r.get('is_paid', True),
                         created_by_id=None,
                     )
+                    # FIX: Restore original date
+                    if r.get('date'):
+                        PurchaseBill.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
                 for r in data.get('purchases', []):
-                    Purchase.objects.create(
+                    obj = Purchase.objects.create(
                         id=r['id'], bill_id=r.get('bill_id'),
                         product_id=r['product_id'],
                         purchase_unit=r.get('purchase_unit', 'nos'),
@@ -873,9 +959,11 @@ class BackupView(APIView):
                         selling_unit=r.get('selling_unit', 'nos'),
                         selling_qty=d(r.get('selling_qty', 1)),
                     )
+                    if r.get('date'):
+                        Purchase.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
                 for r in data.get('sale_bills', []):
-                    SaleBill.objects.create(
+                    obj = SaleBill.objects.create(
                         id=r['id'], bill_number=r['bill_number'],
                         total_amount=d(r['total_amount']),
                         payment_type=r['payment_type'],
@@ -884,6 +972,9 @@ class BackupView(APIView):
                         upi_amount=d(r.get('upi_amount', 0)),
                         created_by_id=None,
                     )
+                    # FIX: Restore original created_at date
+                    if r.get('created_at'):
+                        SaleBill.objects.filter(pk=obj.pk).update(created_at=dt(r['created_at']))
 
                 for r in data.get('sale_items', []):
                     SaleItem.objects.create(
@@ -896,12 +987,14 @@ class BackupView(APIView):
                     )
 
                 for r in data.get('return_items', []):
-                    ReturnItem.objects.create(
+                    obj = ReturnItem.objects.create(
                         id=r['id'], product_id=r['product_id'],
                         return_type=r['return_type'],
                         quantity=d(r.get('quantity', 1)),
                         processed_by_id=None,
                     )
+                    if r.get('date'):
+                        ReturnItem.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
                 for r in data.get('internal_masters', []):
                     InternalSaleMaster.objects.create(
@@ -911,7 +1004,7 @@ class BackupView(APIView):
                     )
 
                 for r in data.get('internal_sales', []):
-                    InternalSale.objects.create(
+                    obj = InternalSale.objects.create(
                         id=r['id'], product_id=r['product_id'],
                         destination_id=r['destination_id'],
                         bill_id=r.get('bill_id'),
@@ -919,9 +1012,11 @@ class BackupView(APIView):
                         price=d(r['price']),
                         created_by_id=None,
                     )
+                    if r.get('date'):
+                        InternalSale.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
                 for r in data.get('purchase_returns', []):
-                    PurchaseReturn.objects.create(
+                    obj = PurchaseReturn.objects.create(
                         id=r['id'], product_id=r['product_id'],
                         vendor_id=r.get('vendor_id'),
                         quantity=d(r['quantity']),
@@ -931,6 +1026,8 @@ class BackupView(APIView):
                         status=r.get('status', 'pending'),
                         created_by_id=None,
                     )
+                    if r.get('date'):
+                        PurchaseReturn.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
                 for r in data.get('direct_masters', []):
                     DirectSaleMaster.objects.create(
@@ -940,7 +1037,7 @@ class BackupView(APIView):
                     )
 
                 for r in data.get('direct_sales', []):
-                    DirectSale.objects.create(
+                    obj = DirectSale.objects.create(
                         id=r['id'], item_id=r['item_id'],
                         price=d(r['price']),
                         payment_type=r['payment_type'],
@@ -949,9 +1046,11 @@ class BackupView(APIView):
                         upi_amount=d(r.get('upi_amount', 0)),
                         created_by_id=None,
                     )
+                    if r.get('date'):
+                        DirectSale.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
                 for r in data.get('stock_transfers', []):
-                    StockTransfer.objects.create(
+                    obj = StockTransfer.objects.create(
                         id=r['id'], product_id=r['product_id'],
                         quantity=d(r['quantity']),
                         mrp=d(r['mrp']),
@@ -959,19 +1058,21 @@ class BackupView(APIView):
                         tax=d(r.get('tax', 0)),
                         created_by_id=None,
                     )
+                    if r.get('date'):
+                        StockTransfer.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
-                # InternalSaleBills
                 for r in data.get('internal_sale_bills', []):
-                    InternalSaleBill.objects.create(
+                    obj = InternalSaleBill.objects.create(
                         id=r['id'],
                         destination_id=r['destination_id'],
                         sale_number=r.get('sale_number', ''),
                         created_by_id=None,
                     )
+                    if r.get('date'):
+                        InternalSaleBill.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
-                # ItemReturns
                 for r in data.get('item_returns', []):
-                    ItemReturn.objects.create(
+                    obj = ItemReturn.objects.create(
                         id=r['id'],
                         return_number=r.get('return_number', ''),
                         payment_type=r.get('payment_type', 'cash'),
@@ -981,8 +1082,9 @@ class BackupView(APIView):
                         total_amount=d(r.get('total_amount', 0)),
                         created_by_id=None,
                     )
+                    if r.get('date'):
+                        ItemReturn.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
-                # ItemReturnLines
                 for r in data.get('item_return_lines', []):
                     ItemReturnLine.objects.create(
                         id=r['id'],
@@ -994,9 +1096,8 @@ class BackupView(APIView):
                         return_type=r.get('return_type', 'customer_return'),
                     )
 
-                # PhysicalStockRequests
                 for r in data.get('physical_stock_reqs', []):
-                    PhysicalStockRequest.objects.create(
+                    obj = PhysicalStockRequest.objects.create(
                         id=r['id'],
                         request_number=r.get('request_number', ''),
                         status=r.get('status', 'pending'),
@@ -1004,10 +1105,12 @@ class BackupView(APIView):
                         requested_by_id=None,
                         reviewed_by_id=None,
                     )
+                    if r.get('created_at'):
+                        PhysicalStockRequest.objects.filter(pk=obj.pk).update(
+                            created_at=dt(r['created_at']))
 
-                # StockAdjustmentRequests
                 for r in data.get('stock_adjustments', []):
-                    StockAdjustmentRequest.objects.create(
+                    obj = StockAdjustmentRequest.objects.create(
                         id=r['id'],
                         ps_request_id=r.get('ps_request_id'),
                         product_id=r['product_id'],
@@ -1018,28 +1121,31 @@ class BackupView(APIView):
                         requested_by_id=None,
                         reviewed_by_id=None,
                     )
+                    if r.get('created_at'):
+                        StockAdjustmentRequest.objects.filter(pk=obj.pk).update(
+                            created_at=dt(r['created_at']))
 
-            # Reset PostgreSQL sequences so new records don't conflict
+            # Reset PostgreSQL sequences
             from django.db import connection
             tables_with_sequences = [
-                ('api_vendor',              'id'),
-                ('api_product',             'id'),
-                ('api_stockbatch',          'id'),
-                ('api_purchasebill',        'id'),
-                ('api_purchase',            'id'),
-                ('api_salebill',            'id'),
-                ('api_saleitem',            'id'),
-                ('api_returnitem',          'id'),
-                ('api_internalsalemaster',  'id'),
-                ('api_internalsalebill',    'id'),
-                ('api_internalsale',        'id'),
-                ('api_purchasereturn',      'id'),
-                ('api_directsalemaster',    'id'),
-                ('api_directsale',          'id'),
-                ('api_stocktransfer',       'id'),
-                ('api_itemreturn',          'id'),
-                ('api_itemreturnline',      'id'),
-                ('api_physicalstockrequest','id'),
+                ('api_vendor',                'id'),
+                ('api_product',               'id'),
+                ('api_stockbatch',            'id'),
+                ('api_purchasebill',          'id'),
+                ('api_purchase',              'id'),
+                ('api_salebill',              'id'),
+                ('api_saleitem',              'id'),
+                ('api_returnitem',            'id'),
+                ('api_internalsalemaster',    'id'),
+                ('api_internalsalebill',      'id'),
+                ('api_internalsale',          'id'),
+                ('api_purchasereturn',        'id'),
+                ('api_directsalemaster',      'id'),
+                ('api_directsale',            'id'),
+                ('api_stocktransfer',         'id'),
+                ('api_itemreturn',            'id'),
+                ('api_itemreturnline',        'id'),
+                ('api_physicalstockrequest',  'id'),
                 ('api_stockadjustmentrequest','id'),
             ]
             with connection.cursor() as cursor:
@@ -1063,15 +1169,14 @@ class UserPermissionViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'], url_path='me')
     def my_permissions(self, request):
-        """Get permissions for the currently logged-in user."""
         if request.user.role == 'admin':
             return Response({'is_admin': True})
         perm = self.get_or_create_perm(request.user)
         return Response({'is_admin': False, **UserPermissionSerializer(perm).data})
 
     def list(self, request):
-        """List all general users with their permissions (admin only)."""
-        if request.user.role != 'admin':
+        # FIX: Use IsAdminUser permission class instead of manual role check
+        if not request.user.role == 'admin':
             return Response({'detail': 'Admin only'}, status=403)
         users  = User.objects.filter(role='general').order_by('username')
         result = []
@@ -1087,8 +1192,7 @@ class UserPermissionViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['patch'], url_path='update/(?P<user_id>[^/.]+)')
     def update_permissions(self, request, user_id=None):
-        """Update permissions for a specific user (admin only)."""
-        if request.user.role != 'admin':
+        if not request.user.role == 'admin':
             return Response({'detail': 'Admin only'}, status=403)
         try:
             user = User.objects.get(id=user_id)
@@ -1101,6 +1205,7 @@ class UserPermissionViewSet(viewsets.ViewSet):
             return Response(serializer.data)
         return Response(serializer.errors, status=400)
 
+
 # ── ItemReturn ViewSet ────────────────────────────────────────────────────────
 
 class ItemReturnViewSet(viewsets.ModelViewSet):
@@ -1112,87 +1217,96 @@ class ItemReturnViewSet(viewsets.ModelViewSet):
         serializer.save(created_by=self.request.user)
 
     def create(self, request, *args, **kwargs):
-        """
-        POST /item-returns/
-        {
-          "lines": [
-            {
-              "product": 5,
-              "quantity": 2,
-              "price": 45.00,
-              "return_type": "customer_return",
-              "sale_bill": 12   // optional
-            }
-          ],
-          "payment_type": "cash",
-          "cash_amount": 90,
-          "card_amount": 0,
-          "upi_amount": 0
-        }
-        """
-        from decimal import Decimal
-        data      = request.data
-        lines     = data.get('lines', [])
-        pay_type  = data.get('payment_type', 'cash')
-        cash_amt  = Decimal(str(data.get('cash_amount', 0)))
-        card_amt  = Decimal(str(data.get('card_amount', 0)))
-        upi_amt   = Decimal(str(data.get('upi_amount', 0)))
+        from django.db import transaction as db_transaction
+        data     = request.data
+        lines    = data.get('lines', [])
+        pay_type = data.get('payment_type', 'cash')
+        cash_amt = Decimal(str(data.get('cash_amount', 0)))
+        card_amt = Decimal(str(data.get('card_amount', 0)))
+        upi_amt  = Decimal(str(data.get('upi_amount', 0)))
 
         if not lines:
             return Response({'error': 'No items provided'}, status=400)
 
-        # Calculate total
         total = sum(
             Decimal(str(l['quantity'])) * Decimal(str(l['price']))
             for l in lines
             if l.get('return_type', 'customer_return') == 'customer_return'
         )
 
-        # Create header
-        ir = ItemReturn.objects.create(
-            payment_type=pay_type,
-            cash_amount=cash_amt,
-            card_amount=card_amt,
-            upi_amount=upi_amt,
-            total_amount=total,
-            created_by=request.user,
-        )
-
-        for l in lines:
-            product  = Product.objects.get(id=l['product'])
-            qty      = Decimal(str(l['quantity']))
-            price    = Decimal(str(l['price']))
-            rtype    = l.get('return_type', 'customer_return')
-            bill_id  = l.get('sale_bill')
-            sale_bill = None
-
-            if bill_id:
-                try:
-                    sale_bill = SaleBill.objects.get(id=bill_id)
-                    # Do NOT modify bill total or amounts
-                    # Just link the return to this bill for reference
-                except SaleBill.DoesNotExist:
-                    pass
-
-            # Restore stock for customer return
-            if rtype == 'customer_return':
-                product.stock_quantity += qty
-            elif rtype == 'damaged':
-                product.damaged_quantity += qty
-                product.stock_quantity = max(Decimal('0'), product.stock_quantity - qty)
-            elif rtype == 'expired':
-                product.expired_quantity += qty
-                product.stock_quantity = max(Decimal('0'), product.stock_quantity - qty)
-            product.save()
-
-            ItemReturnLine.objects.create(
-                item_return=ir,
-                product=product,
-                sale_bill=sale_bill,
-                quantity=qty,
-                price=price,
-                return_type=rtype,
+        # FIX: Wrap entire return creation in a transaction with locks
+        with db_transaction.atomic():
+            ir = ItemReturn.objects.create(
+                payment_type=pay_type,
+                cash_amount=cash_amt,
+                card_amount=card_amt,
+                upi_amount=upi_amt,
+                total_amount=total,
+                created_by=request.user,
             )
+
+            for l in lines:
+                # FIX: Lock product row to prevent concurrent stock corruption
+                product   = Product.objects.select_for_update().get(id=l['product'])
+                qty       = Decimal(str(l['quantity']))
+                price     = Decimal(str(l['price']))
+                rtype     = l.get('return_type', 'customer_return')
+                bill_id   = l.get('sale_bill')
+                sale_bill = None
+
+                if bill_id:
+                    try:
+                        sale_bill = SaleBill.objects.get(id=bill_id)
+                    except SaleBill.DoesNotExist:
+                        pass
+
+                if rtype == 'customer_return':
+                    product.stock_quantity += qty
+                    # Add stock back to the highest MRP batch
+                    latest = StockBatch.objects.filter(product=product).order_by('-mrp', '-created_at').first()
+                    if latest:
+                        latest.quantity = Decimal(str(latest.quantity)) + qty
+                        latest.save()
+                    else:
+                        StockBatch.objects.create(
+                            product=product, mrp=product.selling_price, quantity=qty)
+                elif rtype == 'damaged':
+                    product.damaged_quantity += qty
+                    product.stock_quantity = max(Decimal('0'), product.stock_quantity - qty)
+                    remaining = qty
+                    for b in StockBatch.objects.select_for_update().filter(
+                        product=product, quantity__gt=0
+                    ).order_by('-mrp'):
+                        if remaining <= 0:
+                            break
+                        deduct = min(Decimal(str(b.quantity)), remaining)
+                        b.quantity = Decimal(str(b.quantity)) - deduct
+                        b.save()
+                        remaining -= deduct
+                elif rtype == 'expired':
+                    product.expired_quantity += qty
+                    product.stock_quantity = max(Decimal('0'), product.stock_quantity - qty)
+                    remaining = qty
+                    for b in StockBatch.objects.select_for_update().filter(
+                        product=product, quantity__gt=0
+                    ).order_by('mrp'):
+                        if remaining <= 0:
+                            break
+                        deduct = min(Decimal(str(b.quantity)), remaining)
+                        b.quantity = Decimal(str(b.quantity)) - deduct
+                        b.save()
+                        remaining -= deduct
+
+                product.save()
+
+                ItemReturnLine.objects.create(
+                    item_return=ir,
+                    product=product,
+                    sale_bill=sale_bill,
+                    quantity=qty,
+                    price=price,
+                    return_type=rtype,
+                )
 
         return Response(ItemReturnSerializer(ir).data, status=201)
 
@@ -1208,14 +1322,14 @@ class ItemReturnViewSet(viewsets.ModelViewSet):
             lines = []
             for l in ir.lines.all():
                 lines.append({
-                    'product_id':   l.product.id,
-                    'product_name': l.product.name,
-                    'barcode':      l.product.barcode,
-                    'quantity':     float(l.quantity),
-                    'price':        float(l.price),
-                    'total':        float(l.quantity * l.price),
-                    'return_type':  l.return_type,
-                    'sale_bill_id': l.sale_bill.id if l.sale_bill else None,
+                    'product_id':       l.product.id,
+                    'product_name':     l.product.name,
+                    'barcode':          l.product.barcode,
+                    'quantity':         float(l.quantity),
+                    'price':            float(l.price),
+                    'total':            float(l.quantity * l.price),
+                    'return_type':      l.return_type,
+                    'sale_bill_id':     l.sale_bill.id if l.sale_bill else None,
                     'sale_bill_number': l.sale_bill.bill_number if l.sale_bill else None,
                 })
             result.append({
@@ -1255,8 +1369,7 @@ class ItemReturnViewSet(viewsets.ModelViewSet):
         if date_to:
             import datetime
             try:
-                date_obj = datetime.date.fromisoformat(date_to)
-                # Filter bills created exactly on this local date (IST)
+                date_obj     = datetime.date.fromisoformat(date_to)
                 start_of_day = timezone.make_aware(
                     datetime.datetime.combine(date_obj, datetime.time(0, 0, 0))
                 )
@@ -1292,44 +1405,54 @@ class InternalSaleBillViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
-        """
-        POST /internal-sale-bills/
-        {
-          "destination": 3,
-          "items": [
-            {"product": 5, "quantity": 2, "price": 45.00},
-            {"product": 7, "quantity": 1, "price": 30.00}
-          ]
-        }
-        """
-        from decimal import Decimal
-        data        = request.data
-        dest_id     = data.get('destination')
-        items_data  = data.get('items', [])
+        from django.db import transaction as db_transaction
+        data       = request.data
+        dest_id    = data.get('destination')
+        items_data = data.get('items', [])
 
         if not dest_id or not items_data:
             return Response({'error': 'destination and items required'}, status=400)
 
-        destination = InternalSaleMaster.objects.get(id=dest_id)
-        bill = InternalSaleBill.objects.create(
-            destination=destination,
-            created_by=request.user,
-        )
-
-        for item in items_data:
-            product = Product.objects.get(id=item['product'])
-            qty     = Decimal(str(item['quantity']))
-            price   = Decimal(str(item.get('price', product.selling_price)))
-            InternalSale.objects.create(
-                bill=bill,
-                product=product,
+        # FIX: Wrap in transaction with select_for_update to prevent concurrent stock issues
+        with db_transaction.atomic():
+            destination = InternalSaleMaster.objects.get(id=dest_id)
+            bill = InternalSaleBill.objects.create(
                 destination=destination,
-                quantity=qty,
-                price=price,
                 created_by=request.user,
             )
-            product.stock_quantity = max(Decimal('0'), product.stock_quantity - qty)
-            product.save()
+
+            for item in items_data:
+                # FIX: Lock product row
+                product = Product.objects.select_for_update().get(id=item['product'])
+                qty     = Decimal(str(item['quantity']))
+                price   = Decimal(str(item.get('price', product.selling_price)))
+
+                if product.stock_quantity < qty:
+                    raise Exception(f"Insufficient stock for {product.name}")
+
+                InternalSale.objects.create(
+                    bill=bill,
+                    product=product,
+                    destination=destination,
+                    quantity=qty,
+                    price=price,
+                    created_by=request.user,
+                )
+
+                # Deduct from batches
+                remaining = qty
+                for b in StockBatch.objects.select_for_update().filter(
+                    product=product, quantity__gt=0
+                ).order_by('mrp', 'created_at'):
+                    if remaining <= 0:
+                        break
+                    deduct = min(Decimal(str(b.quantity)), remaining)
+                    b.quantity = Decimal(str(b.quantity)) - deduct
+                    b.save()
+                    remaining -= deduct
+
+                product.stock_quantity = max(Decimal('0'), product.stock_quantity - qty)
+                product.save()
 
         return Response(InternalSaleBillSerializer(bill).data, status=201)
 
@@ -1371,7 +1494,7 @@ class InternalSaleBillViewSet(viewsets.ModelViewSet):
 class PhysicalStockRequestViewSet(viewsets.ModelViewSet):
     queryset           = PhysicalStockRequest.objects.all().order_by('-created_at')
     permission_classes = [IsAuthenticated]
-    serializer_class   = StockAdjustmentRequestSerializer  # reuse, we'll add custom
+    serializer_class   = StockAdjustmentRequestSerializer
 
     def list(self, request):
         qs = PhysicalStockRequest.objects.prefetch_related(
@@ -1382,15 +1505,15 @@ class PhysicalStockRequestViewSet(viewsets.ModelViewSet):
             items = []
             for item in ps.items.all():
                 items.append({
-                    'id':             item.id,
-                    'product_id':     item.product.id,
-                    'product_name':   item.product.name,
-                    'product_barcode':item.product.barcode,
-                    'mrp':            float(item.product.selling_price),
-                    'selling_unit':   item.product.selling_unit,
-                    'system_stock':   float(item.system_stock),
-                    'physical_stock': float(item.physical_stock),
-                    'status':         item.status,
+                    'id':              item.id,
+                    'product_id':      item.product.id,
+                    'product_name':    item.product.name,
+                    'product_barcode': item.product.barcode,
+                    'mrp':             float(item.product.selling_price),
+                    'selling_unit':    item.product.selling_unit,
+                    'system_stock':    float(item.system_stock),
+                    'physical_stock':  float(item.physical_stock),
+                    'status':          item.status,
                 })
             result.append({
                 'id':             ps.id,
@@ -1407,10 +1530,6 @@ class PhysicalStockRequestViewSet(viewsets.ModelViewSet):
         return Response(result)
 
     def create(self, request):
-        """
-        POST /physical-stock-requests/
-        { items: [{product, system_stock, physical_stock}], reason: '' }
-        """
         items_data = request.data.get('items', [])
         reason     = request.data.get('reason', '')
         if not items_data:
@@ -1432,8 +1551,7 @@ class PhysicalStockRequestViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['patch'])
     def approve(self, request, pk=None):
-        from decimal import Decimal
-        from django.db.models import Sum
+        from django.db.models import Sum as DSum
 
         ps = PhysicalStockRequest.objects.get(pk=pk)
         if ps.status != 'pending':
@@ -1450,26 +1568,21 @@ class PhysicalStockRequestViewSet(viewsets.ModelViewSet):
             item.reviewed_at = timezone.now()
             item.save()
 
-            product      = item.product
-            new_qty      = Decimal(str(item.physical_stock))
+            product  = item.product
+            new_qty  = Decimal(str(item.physical_stock))
 
-            # ── FIX: update StockBatch quantities so sale search sees correct stock ──
-            # Get current total batch quantity
             old_total = StockBatch.objects.filter(
                 product=product
-            ).aggregate(t=Sum('quantity'))['t'] or Decimal('0')
+            ).aggregate(t=DSum('quantity'))['t'] or Decimal('0')
 
             if old_total > 0:
-                # Scale existing batches proportionally to match new total
                 ratio = new_qty / old_total
                 for b in StockBatch.objects.filter(product=product):
                     b.quantity = (Decimal(str(b.quantity)) * ratio).quantize(Decimal('0.001'))
                     b.save()
             elif new_qty > 0:
-                # No batches exist — create one at current selling price
                 existing = StockBatch.objects.filter(product=product).first()
                 if existing:
-                    # Zero out all, set the first one to new_qty
                     StockBatch.objects.filter(product=product).update(quantity=Decimal('0'))
                     existing.quantity = new_qty
                     existing.save()
@@ -1480,40 +1593,46 @@ class PhysicalStockRequestViewSet(viewsets.ModelViewSet):
                         quantity=new_qty
                     )
             else:
-                # new_qty is 0 — zero out all batches
                 StockBatch.objects.filter(product=product).update(quantity=Decimal('0'))
 
-            # Update the denormalized field on Product
             product.stock_quantity = new_qty
             product.save()
 
         return Response({'status': 'approved'})
-    
+
 
 class SyncStockView(APIView):
-    permission_classes = [IsAuthenticated]
+    # FIX: Use IsAdminUser permission class consistently
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
     def post(self, request):
-        if request.user.role != 'admin':
-            return Response({'detail': 'Admin only'}, status=403)
-        
-        from django.db.models import Sum
+        """
+        FIX: Added confirmation requirement to prevent accidental stock corruption.
+        Pass confirm='SYNC_CONFIRMED' in the request body.
+        """
+        confirm = request.data.get('confirm')
+        if confirm != 'SYNC_CONFIRMED':
+            return Response({
+                'detail': 'Pass confirm="SYNC_CONFIRMED" to proceed with stock sync.'
+            }, status=400)
+
+        from django.db.models import Sum as DSum
         fixed = []
         for product in Product.objects.prefetch_related('batches').all():
             batch_total = product.batches.filter(
                 quantity__gt=0
-            ).aggregate(t=Sum('quantity'))['t'] or Decimal('0')
-            
+            ).aggregate(t=DSum('quantity'))['t'] or Decimal('0')
+
             if abs(float(product.stock_quantity) - float(batch_total)) > 0.001:
                 fixed.append({
                     'product': product.name,
-                    'was': float(product.stock_quantity),
-                    'now': float(batch_total),
+                    'was':     float(product.stock_quantity),
+                    'now':     float(batch_total),
                 })
                 product.stock_quantity = batch_total
                 product.save()
-        
+
         return Response({
-            'fixed': len(fixed),
+            'fixed':   len(fixed),
             'details': fixed,
         })

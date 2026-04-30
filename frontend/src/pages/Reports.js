@@ -370,8 +370,14 @@ export default function Reports() {
   const [masters,        setMasters]        = useState([]);
   const [selDests,       setSelDests]       = useState([]);
   const [loading,        setLoading]        = useState(false);
-  const [dateFrom,       setDateFrom]       = useState('');
-  const [dateTo,         setDateTo]         = useState('');
+  const getMonthStart = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
+  };
+  const getToday = () => new Date().toISOString().split('T')[0];
+
+  const [dateFrom, setDateFrom] = useState(getMonthStart());
+  const [dateTo,   setDateTo]   = useState(getToday());
 
   // ── Tax rate filters (per-tab) ────────────────────────────────────────────
   const [salesTaxRateFilter, setSalesTaxRateFilter] = useState('');
@@ -460,8 +466,14 @@ export default function Reports() {
         const { data } = await getInternalSaleBillReport(params);
         setIntData(data);
       } else if (activeTab === 'purreturn') {
-        const { data } = await getPurchaseReturnReport(params);
-        setPurRetData(data);
+        const [rangeRes, allRes] = await Promise.all([
+          getPurchaseReturnReport(params),
+          getPurchaseReturnReport({}),
+        ]);
+        setPurRetData({
+          ...rangeRes.data,
+          pending_count: allRes.data.pending_count,
+        }); 
       } else if (activeTab === 'purchase') {
         const { data } = await getPurchaseReport(params);
         setPurData(data);
@@ -667,36 +679,43 @@ export default function Reports() {
           <div>Taxable: <strong>${fmt(data.grand_taxable)}</strong></div>
           <div>CGST: <strong>${fmt(data.grand_cgst)}</strong></div>
           <div>SGST: <strong>${fmt(data.grand_sgst)}</strong></div>
-          <div>Total: <strong>${fmt(data.grand_total)}</strong></div>
+          <div>Total Tax: <strong>${fmt(data.grand_tax)}</strong></div>
+          <div>Grand Total: <strong>${fmt(data.grand_total)}</strong></div>
         </div>
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
           <thead><tr style="background:#f0f0f0">
-            <th style="border:1px solid #ccc;padding:7px">PO No</th>
-            <th style="border:1px solid #ccc;padding:7px">Date</th>
-            <th style="border:1px solid #ccc;padding:7px">Vendor</th>
-            <th style="border:1px solid #ccc;padding:7px">Taxable Amt</th>
-            <th style="border:1px solid #ccc;padding:7px">CGST</th>
-            <th style="border:1px solid #ccc;padding:7px">SGST</th>
-            <th style="border:1px solid #ccc;padding:7px">Total Tax</th>
-            <th style="border:1px solid #ccc;padding:7px">Total</th>
+            <th style="border:1px solid #ccc;padding:6px">PO No</th>
+            <th style="border:1px solid #ccc;padding:6px">Date</th>
+            <th style="border:1px solid #ccc;padding:6px">Vendor</th>
+            <th style="border:1px solid #ccc;padding:6px">Product</th>
+            <th style="border:1px solid #ccc;padding:6px">Qty</th>
+            <th style="border:1px solid #ccc;padding:6px">Tax Rate</th>
+            <th style="border:1px solid #ccc;padding:6px">Taxable</th>
+            <th style="border:1px solid #ccc;padding:6px">CGST</th>
+            <th style="border:1px solid #ccc;padding:6px">SGST</th>
+            <th style="border:1px solid #ccc;padding:6px">Total Tax</th>
+            <th style="border:1px solid #ccc;padding:6px">Total</th>
           </tr></thead>
           <tbody>${(data.bills||[]).map((b,i)=>`<tr style="background:${i%2===0?'#fff':'#fafafa'}">
-            <td style="border:1px solid #ccc;padding:6px">${b.purchase_number}</td>
-            <td style="border:1px solid #ccc;padding:6px">${new Date(b.date).toLocaleDateString()}</td>
-            <td style="border:1px solid #ccc;padding:6px">${b.vendor_name}</td>
-            <td style="border:1px solid #ccc;padding:6px">${fmt(b.taxable_amount)}</td>
-            <td style="border:1px solid #ccc;padding:6px">${fmt(b.cgst)}</td>
-            <td style="border:1px solid #ccc;padding:6px">${fmt(b.sgst)}</td>
-            <td style="border:1px solid #ccc;padding:6px">${fmt(b.total_tax)}</td>
-            <td style="border:1px solid #ccc;padding:6px;font-weight:700">${fmt(b.total_amount)}</td>
+            <td style="border:1px solid #ccc;padding:5px">${b.purchase_number}</td>
+            <td style="border:1px solid #ccc;padding:5px">${new Date(b.date).toLocaleDateString()}</td>
+            <td style="border:1px solid #ccc;padding:5px">${b.vendor_name}</td>
+            <td style="border:1px solid #ccc;padding:5px">${b.product_name}</td>
+            <td style="border:1px solid #ccc;padding:5px">${parseFloat(b.quantity).toFixed(3)}</td>
+            <td style="border:1px solid #ccc;padding:5px">${b.tax_rate}%</td>
+            <td style="border:1px solid #ccc;padding:5px">${fmt(b.taxable_amount)}</td>
+            <td style="border:1px solid #ccc;padding:5px">${fmt(b.cgst)}</td>
+            <td style="border:1px solid #ccc;padding:5px">${fmt(b.sgst)}</td>
+            <td style="border:1px solid #ccc;padding:5px;font-weight:700">${fmt(b.total_tax)}</td>
+            <td style="border:1px solid #ccc;padding:5px;font-weight:700">${fmt(b.total_amount)}</td>
           </tr>`).join('')}</tbody>
           <tfoot><tr style="background:#f0f0f0;font-weight:800">
-            <td colspan="3" style="border:1px solid #ccc;padding:7px">TOTAL</td>
-            <td style="border:1px solid #ccc;padding:7px">${fmt(data.grand_taxable)}</td>
-            <td style="border:1px solid #ccc;padding:7px">${fmt(data.grand_cgst)}</td>
-            <td style="border:1px solid #ccc;padding:7px">${fmt(data.grand_sgst)}</td>
-            <td style="border:1px solid #ccc;padding:7px">${fmt(data.grand_tax)}</td>
-            <td style="border:1px solid #ccc;padding:7px">${fmt(data.grand_total)}</td>
+            <td colspan="6" style="border:1px solid #ccc;padding:6px">TOTAL</td>
+            <td style="border:1px solid #ccc;padding:6px">${fmt(data.grand_taxable)}</td>
+            <td style="border:1px solid #ccc;padding:6px">${fmt(data.grand_cgst)}</td>
+            <td style="border:1px solid #ccc;padding:6px">${fmt(data.grand_sgst)}</td>
+            <td style="border:1px solid #ccc;padding:6px">${fmt(data.grand_tax)}</td>
+            <td style="border:1px solid #ccc;padding:6px">${fmt(data.grand_total)}</td>
           </tr></tfoot>
         </table>
       </div>`;
@@ -1272,13 +1291,12 @@ export default function Reports() {
           {/* ── Purchase Tax — with filter dropdown ── */}
           {tab === 'purtax' && (
             <>
-              {/* ── Purchase Tax Rate Dropdown ── */}
               <TaxRateFilter
                 value={purTaxRateFilter}
                 onChange={setPurTaxRateFilter}
                 availableRates={
                   purTaxData?.available_tax_rates ||
-                  [...new Set((purTaxData?.bills||[]).flatMap(b=>(b.items||[]).map(i=>i.tax_rate)).filter(Boolean))].sort((a,b)=>a-b) ||
+                  [...new Set((purTaxData?.bills||[]).map(i => i.tax_rate).filter(Boolean))].sort((a,b)=>a-b) ||
                   purTaxAvailableRates
                 }
               />
@@ -1297,13 +1315,28 @@ export default function Reports() {
               )}
               <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                 <table>
-                  <thead><tr><th>PO No</th><th>Date</th><th>Vendor</th><th>Taxable Amt</th><th>CGST</th><th>SGST</th><th>Total Tax</th><th>Total Amount</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th>PO No</th><th>Date</th><th>Vendor</th><th>Product</th><th>Qty</th>
+                      <th>Tax Rate</th><th>Taxable Amt</th><th>CGST</th><th>SGST</th>
+                      <th>Total Tax</th><th>Total Amount</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {(purTaxData?.bills || []).map((b, i) => (
                       <tr key={i}>
                         <td><span className="badge badge-orange" style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>{b.purchase_number}</span></td>
                         <td style={{ fontSize: 12, color: 'var(--text3)' }}>{new Date(b.date).toLocaleDateString()}</td>
                         <td style={{ fontWeight: 600 }}>{b.vendor_name}</td>
+                        <td style={{ fontWeight: 600 }}>
+                          {b.product_name}
+                          <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{b.product_barcode}</div>
+                        </td>
+                        <td style={{ fontFamily: 'var(--mono)' }}>{parseFloat(b.quantity).toFixed(3)}</td>
+                        <td>
+                          <span className="badge badge-blue">{b.tax_rate}%</span>
+                          <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>CGST {b.cgst_rate}% + SGST {b.sgst_rate}%</div>
+                        </td>
                         <td style={{ fontFamily: 'var(--mono)' }}>{fmt(b.taxable_amount)}</td>
                         <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{fmt(b.cgst)}</td>
                         <td style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{fmt(b.sgst)}</td>
@@ -1312,12 +1345,23 @@ export default function Reports() {
                       </tr>
                     ))}
                   </tbody>
+                  {(purTaxData?.bills||[]).length > 0 && (
+                    <tfoot>
+                      <tr style={{ background: 'var(--bg2)', fontWeight: 800 }}>
+                        <td colSpan={6} style={{ padding: '8px 12px', textAlign: 'right' }}>Grand Total</td>
+                        <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)' }}>{fmt(purTaxData.grand_taxable)}</td>
+                        <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)' }}>{fmt(purTaxData.grand_cgst)}</td>
+                        <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)' }}>{fmt(purTaxData.grand_sgst)}</td>
+                        <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{fmt(purTaxData.grand_tax)}</td>
+                        <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{fmt(purTaxData.grand_total)}</td>
+                      </tr>
+                    </tfoot>
+                  )}
                 </table>
                 {(!purTaxData || purTaxData.bills.length === 0) && <div className="empty-state"><div className="icon">🧾</div>No purchase tax data</div>}
               </div>
             </>
           )}
-
           {/* ── Direct Sale ── */}
           {tab === 'direct' && (
             <>

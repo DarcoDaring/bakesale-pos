@@ -97,7 +97,6 @@ class PurchaseItemSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'date']
 
     def get_cost_per_item(self, obj):
-        """purchase_price ÷ selling_qty = cost per selling unit"""
         selling_qty = float(obj.selling_qty) if obj.selling_qty else 1
         if selling_qty <= 0:
             selling_qty = 1
@@ -132,7 +131,6 @@ class PurchaseBillListSerializer(serializers.ModelSerializer):
 class PurchaseBillSerializer(serializers.ModelSerializer):
     items       = PurchaseItemSerializer(many=True)
     vendor_name = serializers.CharField(source='vendor.name', read_only=True)
-
     total_value = serializers.SerializerMethodField()
 
     def get_total_value(self, obj):
@@ -244,7 +242,7 @@ class SaleBillSerializer(serializers.ModelSerializer):
             bill        = SaleBill.objects.create(bill_number=bill_number, **validated_data)
 
             for item_data in items_data:
-                # Lock the product row to prevent race conditions with simultaneous sales
+                # FIX: Lock product row to prevent race conditions
                 product  = Product.objects.select_for_update().get(pk=item_data['product'].pk)
                 qty      = Decimal(str(item_data['quantity']))
                 batch_id = item_data.pop('batch_id', None)
@@ -280,7 +278,6 @@ class SaleBillSerializer(serializers.ModelSerializer):
                             f"Insufficient stock for {product.name}"
                         )
 
-                # Use product.tax (set by purchase or opening stock); fall back to last purchase
                 if float(product.tax or 0) > 0:
                     tax_rate = float(product.tax)
                 else:
@@ -302,6 +299,7 @@ class SaleBillSerializer(serializers.ModelSerializer):
                 product.save()
 
         return bill
+
 
 class SaleBillListSerializer(serializers.ModelSerializer):
     item_count    = serializers.SerializerMethodField()
@@ -406,26 +404,32 @@ class InternalSaleSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'date']
 
     def create(self, validated_data):
-        internal = InternalSale.objects.create(**validated_data)
-        product  = internal.product
-        qty      = Decimal(str(internal.quantity))
-        if Decimal(str(product.stock_quantity)) < qty:
-            internal.delete()
-            raise serializers.ValidationError(f"Insufficient stock for {product.name}")
-        remaining = qty
-        for b in StockBatch.objects.filter(
-            product=product, quantity__gt=0
-        ).order_by('mrp', 'created_at'):
-            if remaining <= 0:
-                break
-            deduct = min(Decimal(str(b.quantity)), remaining)
-            b.quantity = Decimal(str(b.quantity)) - deduct
-            b.save()
-            remaining -= deduct
-        product.stock_quantity = Decimal(str(product.stock_quantity)) - qty
-        if product.stock_quantity < 0:
-            product.stock_quantity = Decimal('0')
-        product.save()
+        with transaction.atomic():
+            # FIX: Lock product to prevent concurrent stock issues
+            product = Product.objects.select_for_update().get(pk=validated_data['product'].pk)
+            qty     = Decimal(str(validated_data['quantity']))
+
+            if Decimal(str(product.stock_quantity)) < qty:
+                raise serializers.ValidationError(f"Insufficient stock for {product.name}")
+
+            internal = InternalSale.objects.create(**validated_data)
+
+            remaining = qty
+            for b in StockBatch.objects.select_for_update().filter(
+                product=product, quantity__gt=0
+            ).order_by('mrp', 'created_at'):
+                if remaining <= 0:
+                    break
+                deduct = min(Decimal(str(b.quantity)), remaining)
+                b.quantity = Decimal(str(b.quantity)) - deduct
+                b.save()
+                remaining -= deduct
+
+            product.stock_quantity = Decimal(str(product.stock_quantity)) - qty
+            if product.stock_quantity < 0:
+                product.stock_quantity = Decimal('0')
+            product.save()
+
         return internal
 
 
@@ -448,21 +452,24 @@ class PurchaseReturnSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'date']
 
     def create(self, validated_data):
-        pr      = PurchaseReturn.objects.create(**validated_data)
-        product = pr.product
-        qty     = Decimal(str(pr.quantity))
-        remaining = qty
-        for b in StockBatch.objects.filter(product=product, quantity__gt=0).order_by('mrp'):
-            if remaining <= 0:
-                break
-            deduct = min(Decimal(str(b.quantity)), remaining)
-            b.quantity = Decimal(str(b.quantity)) - deduct
-            b.save()
-            remaining -= deduct
-        product.stock_quantity = Decimal(str(product.stock_quantity)) - qty
-        if product.stock_quantity < 0:
-            product.stock_quantity = Decimal('0')
-        product.save()
+        with transaction.atomic():
+            pr      = PurchaseReturn.objects.create(**validated_data)
+            product = Product.objects.select_for_update().get(pk=pr.product.pk)
+            qty     = Decimal(str(pr.quantity))
+            remaining = qty
+            for b in StockBatch.objects.select_for_update().filter(
+                product=product, quantity__gt=0
+            ).order_by('mrp'):
+                if remaining <= 0:
+                    break
+                deduct = min(Decimal(str(b.quantity)), remaining)
+                b.quantity = Decimal(str(b.quantity)) - deduct
+                b.save()
+                remaining -= deduct
+            product.stock_quantity = Decimal(str(product.stock_quantity)) - qty
+            if product.stock_quantity < 0:
+                product.stock_quantity = Decimal('0')
+            product.save()
         return pr
 
 
@@ -587,4 +594,4 @@ class InternalSaleBillSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = InternalSaleBill
-        fields = ['id', 'sale_number', 'destination', 'destination_name', 'date', 'created_by'] 
+        fields = ['id', 'sale_number', 'destination', 'destination_name', 'date', 'created_by']

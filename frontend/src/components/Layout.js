@@ -12,7 +12,7 @@ export default function Layout() {
 
   const navItems = [
     { to: '/sale',     label: 'Sale',       icon: '🛒', perm: 'can_access_sale' },
-    { to: '/kaapi-chai', label: 'Kaapi Chai', icon: '☕', alwaysShow: true },
+    { to: '/kaapi-chai', label: 'Kaapi Chai', icon: '☕', perm: 'kc_access' },
     { to: '/purchase', label: 'Purchase',   icon: '📦', perm: 'can_access_purchase' },
     { to: '/reports',  label: 'Reports',    icon: '📊', perm: 'can_access_reports' },
     { to: '/stock',    label: 'Stock',      icon: '🗃️', perm: 'can_access_stock' },

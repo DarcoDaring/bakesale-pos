@@ -81,7 +81,7 @@ function AppRoutes() {
         <Route path="admin"    element={<AdminRoute><AdminPanel /></AdminRoute>} />
 
         {/* ── Kaapi Chai POS ── */}
-        <Route path="kaapi-chai"             element={<KaapiChaiPage />} />
+        <Route path="kaapi-chai" element={<PermissionedRoute permKey="kc_access"><KaapiChaiPage /></PermissionedRoute>} />  
         <Route path="kaapi-chai/sale"        element={<PermissionedRoute permKey="kc_sale"><KCSalePage /></PermissionedRoute>} />
         <Route path="kaapi-chai/purchase"    element={<PermissionedRoute permKey="kc_purchase"><KCPurchasePage /></PermissionedRoute>} />
         <Route path="kaapi-chai/stock"       element={<PermissionedRoute permKey="kc_stock"><KCStockPage /></PermissionedRoute>} />

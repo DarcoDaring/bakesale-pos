@@ -501,7 +501,14 @@ function BackupModal({ onClose }) {
   const handleUpload = async () => {
     if (!selectedFile) { toast.error('Select a backup file first'); return; }
     setUploading(true);
-    try { await uploadBackup(selectedFile); setUploadDone(true); toast.success('Backup restored! Please refresh the page.'); }
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('confirm', 'RESTORE_CONFIRMED');
+      await uploadBackup(formData);
+      setUploadDone(true);
+      toast.success('Backup restored! Please refresh the page.');
+    }
     catch (err) { toast.error(err.response?.data?.detail || 'Restore failed'); }
     finally { setUploading(false); setConfirm(false); }
   };

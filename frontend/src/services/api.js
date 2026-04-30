@@ -163,11 +163,9 @@ export const updateUserPermissions = (userId, data) => api.patch(`/permissions/u
 export const markPurchasePaid      = id              => api.patch(`/purchases/${id}/mark_paid/`);
 
 export const downloadBackup = () => api.get('/backup/', { responseType: 'blob' });
-export const uploadBackup   = file => {
-  const fd = new FormData();
-  fd.append('file', file);
-  return api.post('/backup/', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-};
+export const uploadBackup   = formData => api.post('/backup/', formData, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+});
 
 // ── Item Returns ──────────────────────────────────────────────────────────────
 export const createItemReturn    = d      => api.post('/item-returns/', d);
@@ -186,4 +184,4 @@ export const getPhysicalStockRequests    = () => api.get('/physical-stock-reques
 export const approvePhysicalStockRequest = id => api.patch(`/physical-stock-requests/${id}/approve/`, {});
 export const rejectPhysicalStockRequest  = id => api.patch(`/physical-stock-requests/${id}/reject/`, {});
 
-export const syncStock = () => api.post('/sync-stock/');
+export const syncStock = () => api.post('/sync-stock/', { confirm: 'SYNC_CONFIRMED' });
