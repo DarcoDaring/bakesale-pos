@@ -84,10 +84,11 @@ async function startDjango() {
       // Try next to the exe (e.g. E:\bakesale_complete\bakesale_complete\backend)
       const exeDir = path.dirname(app.getPath('exe'));
       const candidates = [
-        path.join(exeDir, '..', 'bakesale_complete', 'backend'),
-        path.join(exeDir, 'backend'),
-        path.join(exeDir, '..', 'backend'),
-        'E:\\bakesale_complete\\bakesale_complete\\backend',
+          'C:\\Bakesale\\backend',
+          path.join(exeDir, '..', 'bakesale_complete', 'backend'),
+          path.join(exeDir, 'backend'),
+          path.join(exeDir, '..', 'backend'),
+          'E:\\bakesale_complete\\bakesale_complete\\backend',
       ];
       for (const c of candidates) {
         if (fs.existsSync(path.join(c, 'manage.py'))) {
@@ -104,11 +105,12 @@ async function startDjango() {
   const managePy = path.join(backendPath, 'manage.py');
 
   const venvPython = path.join(backendPath, 'venv', 'Scripts', 'python.exe');
-  const python = fs.existsSync(venvPython) ? venvPython : 'python';
+  const venvPythonParent = path.join(backendPath, '..', 'venv', 'Scripts', 'python.exe');
+  const python = fs.existsSync(venvPython) ? venvPython : fs.existsSync(venvPythonParent) ? venvPythonParent : 'python';
 
-  console.log('Starting Django:', backendPath);
+  console.log('Starting Waitress:', backendPath);
 
-  djangoProcess = spawn(python, [managePy, 'runserver', `0.0.0.0:${BACKEND_PORT}`], {
+  djangoProcess = spawn(python, ['-m', 'waitress', `--host=0.0.0.0`, `--port=${BACKEND_PORT}`, 'bakesale.wsgi:application'], {
     cwd: backendPath,
     env: { ...process.env, PYTHONUNBUFFERED: '1' },
     stdio: ['ignore', 'pipe', 'pipe'],
