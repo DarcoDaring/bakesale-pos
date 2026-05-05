@@ -98,3 +98,9 @@ yarn-error.log*
 # ── Testing ───────────────────────────────────────────────────────────────────
 coverage/
 .nyc_output/
+
+# ── Local installers / binaries (DO NOT COMMIT) ──
+installer/
+*.exe
+*.msi
+*.zip
