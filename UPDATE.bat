@@ -21,7 +21,7 @@ cd /d "C:\Bakesale\backend"
 :: Show recently modified files (last 1 day)
 echo Recently modified files:
 echo ----------------------------------------
-for /f "delims=" %%f in ('powershell -Command "Get-ChildItem -Path 'C:\Bakesale\backend' -Recurse -File | Where-Object { $_.LastWriteTime -gt (Get-Date).AddDays(-1) -and $_.FullName -notmatch '__pycache__|\.pyc' } | Select-Object -ExpandProperty FullName"') do (
+for /f "delims=" %%f in ('powershell -Command "Get-ChildItem -Path 'C:\Bakesale\backend' -Recurse -File | Where-Object { $_.LastWriteTime -gt (Get-Date).AddDays(-1) -and $_.FullName -notmatch '__pycache__|\.pyc|\\staticfiles\\|\\migrations\\' } | ForEach-Object { $_.Name }"') do (
     echo   %%f
 )
 echo ----------------------------------------
