@@ -1,4 +1,11 @@
 @echo off
+:: Auto-elevate to Administrator
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    powershell -Command "Start-Process '%~f0' -Verb RunAs"
+    exit /b
+)
+
 title Bakesale Backend Updater
 color 0A
 cls
@@ -11,11 +18,19 @@ echo.
 
 cd /d "C:\Bakesale\backend"
 
+:: Show recently modified files (last 1 day)
+echo Recently modified files:
+echo ----------------------------------------
+for /f "delims=" %%f in ('powershell -Command "Get-ChildItem -Path 'C:\Bakesale\backend' -Recurse -File | Where-Object { $_.LastWriteTime -gt (Get-Date).AddDays(-1) -and $_.FullName -notmatch '__pycache__|\.pyc' } | Select-Object -ExpandProperty FullName"') do (
+    echo   %%f
+)
+echo ----------------------------------------
+echo.
+
 call ..\venv\Scripts\activate.bat
 if %errorlevel% neq 0 (
     color 0C
     echo ERROR: Could not activate Python environment!
-    echo Make sure Bakesale Server is properly installed.
     pause
     exit /b 1
 )
