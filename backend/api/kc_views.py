@@ -5,6 +5,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 from decimal import Decimal
@@ -172,12 +173,13 @@ class KCSaleItemViewSet(viewsets.ViewSet):
             return Response({'detail': 'Name required'}, status=400)
         if item_type == 'direct':
             purchase_required = False
-        item = KCSaleItem.objects.create(
-            name=name, item_type=item_type, price=price,
-            is_active=is_active, purchase_required=purchase_required,
-        )
-        for s in data.get('sub_items', []):
-            KCSaleSubItem.objects.create(parent=item, name=s['name'].strip(), price=Decimal(str(s['price'])))
+        with transaction.atomic():
+            item = KCSaleItem.objects.create(
+                name=name, item_type=item_type, price=price,
+                is_active=is_active, purchase_required=purchase_required,
+            )
+            for s in data.get('sub_items', []):
+                KCSaleSubItem.objects.create(parent=item, name=s['name'].strip(), price=Decimal(str(s['price'])))
         return Response(serialize_sale_item(item), status=201)
 
     def retrieve(self, request, pk=None):
@@ -293,22 +295,23 @@ class KCBillViewSet(viewsets.ViewSet):
                 if qty > remaining:
                     return Response({'detail': f'Not enough stock for {item_name}. Available: {remaining}'}, status=400)
 
-        bill = KCBill.objects.create(
-            total=total,
-            payment_type=payment_type,
-            cash_amount=cash_amount,
-            card_amount=card_amount,
-            upi_amount=upi_amount,
-            created_by=request.user,
-        )
-        for l in lines:
-            KCBillLine.objects.create(
-                bill=bill,
-                item_id=l.get('item_id'),
-                item_name=l.get('item_name', ''),
-                qty=Decimal(str(l.get('qty', 1))),
-                price=Decimal(str(l.get('price', 0))),
+        with transaction.atomic():
+            bill = KCBill.objects.create(
+                total=total,
+                payment_type=payment_type,
+                cash_amount=cash_amount,
+                card_amount=card_amount,
+                upi_amount=upi_amount,
+                created_by=request.user,
             )
+            for l in lines:
+                KCBillLine.objects.create(
+                    bill=bill,
+                    item_id=l.get('item_id'),
+                    item_name=l.get('item_name', ''),
+                    qty=Decimal(str(l.get('qty', 1))),
+                    price=Decimal(str(l.get('price', 0))),
+                )
         return Response(serialize_bill(bill), status=201)
 
     def destroy(self, request, pk=None):
@@ -361,26 +364,27 @@ class KCPurchaseViewSet(viewsets.ViewSet):
         purchase_date = data.get('purchase_date')
         parsed_date   = parse_date(purchase_date) if purchase_date else None
 
-        purchase = KCPurchase.objects.create(
-            group_id=group_id, group_name=group_name,
-            total=0, created_by=request.user,
-        )
-        if parsed_date:
-            KCPurchase.objects.filter(pk=purchase.pk).update(
-                created_at=purchase.created_at.replace(
-                    year=parsed_date.year, month=parsed_date.month, day=parsed_date.day,
+        with transaction.atomic():
+            purchase = KCPurchase.objects.create(
+                group_id=group_id, group_name=group_name,
+                total=0, created_by=request.user,
+            )
+            if parsed_date:
+                KCPurchase.objects.filter(pk=purchase.pk).update(
+                    created_at=purchase.created_at.replace(
+                        year=parsed_date.year, month=parsed_date.month, day=parsed_date.day,
+                    )
                 )
-            )
-            purchase.refresh_from_db()
+                purchase.refresh_from_db()
 
-        for l in lines:
-            KCPurchaseLine.objects.create(
-                purchase=purchase,
-                item_id=l.get('item_id'),
-                item_name=l.get('item_name', ''),
-                qty=Decimal(str(l.get('qty', 0))),
-                cost=Decimal('0'),
-            )
+            for l in lines:
+                KCPurchaseLine.objects.create(
+                    purchase=purchase,
+                    item_id=l.get('item_id'),
+                    item_name=l.get('item_name', ''),
+                    qty=Decimal(str(l.get('qty', 0))),
+                    cost=Decimal('0'),
+                )
         return Response(serialize_purchase(purchase), status=201)
 
     def destroy(self, request, pk=None):
@@ -414,15 +418,16 @@ class KCStockViewSet(viewsets.ViewSet):
         lines = data.get('lines', [])
         if not lines:
             return Response({'detail': 'No items'}, status=400)
-        stock = KCStock.objects.create(created_by=request.user)
-        for l in lines:
-            KCStockLine.objects.create(
-                stock=stock,
-                item_id=l.get('item_id'),
-                item_name=l.get('item_name', ''),
-                qty=Decimal(str(l.get('qty', 0))),
-                carry_forward=bool(l.get('carry_forward', False)),
-            )
+        with transaction.atomic():
+            stock = KCStock.objects.create(created_by=request.user)
+            for l in lines:
+                KCStockLine.objects.create(
+                    stock=stock,
+                    item_id=l.get('item_id'),
+                    item_name=l.get('item_name', ''),
+                    qty=Decimal(str(l.get('qty', 0))),
+                    carry_forward=bool(l.get('carry_forward', False)),
+                )
         return Response(serialize_stock(stock), status=201)
 
     @action(detail=False, methods=['get'])
@@ -484,16 +489,17 @@ class KCStoreIssueViewSet(viewsets.ViewSet):
         total = Decimal(str(data.get('total', 0)))
         if not lines:
             return Response({'detail': 'No items'}, status=400)
-        issue = KCStoreIssue.objects.create(total=total, created_by=request.user)
-        for l in lines:
-            KCStoreIssueLine.objects.create(
-                issue=issue,
-                item_id=l.get('item_id'),
-                item_name=l.get('item_name', ''),
-                unit=l.get('unit', ''),
-                qty=Decimal(str(l.get('qty', 0))),
-                cost=Decimal(str(l.get('cost', 0))),
-            )
+        with transaction.atomic():
+            issue = KCStoreIssue.objects.create(total=total, created_by=request.user)
+            for l in lines:
+                KCStoreIssueLine.objects.create(
+                    issue=issue,
+                    item_id=l.get('item_id'),
+                    item_name=l.get('item_name', ''),
+                    unit=l.get('unit', ''),
+                    qty=Decimal(str(l.get('qty', 0))),
+                    cost=Decimal(str(l.get('cost', 0))),
+                )
         return Response(serialize_issue(issue), status=201)
 
     def destroy(self, request, pk=None):

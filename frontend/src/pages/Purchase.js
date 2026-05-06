@@ -1330,7 +1330,7 @@ export default function Purchase() {
       <div className="card" style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 24, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)' }}>Purchase No. (next)</div>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text3)' }}>Purchase No</div>
             <div style={{ padding: '8px 16px', borderRadius: 'var(--radius)', background: 'var(--bg2)', border: '1px solid var(--border)', fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 16, color: 'var(--accent)', letterSpacing: '0.04em' }}>
               {purchaseNumber}
             </div>
@@ -1531,7 +1531,7 @@ export default function Purchase() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
               <span style={{ color: 'var(--text3)', fontSize: 13 }}>{rows.length} item{rows.length !== 1 ? 's' : ''}</span>
               <div>
-                <span style={{ color: 'var(--text3)', fontSize: 13, marginRight: 10 }}>Grand Total (incl. tax)</span>
+                <span style={{ color: 'var(--text3)', fontSize: 13, marginRight: 10 }}>Grand Total </span>
                 <span style={{ fontFamily: 'var(--mono)', fontWeight: 800, fontSize: 20, color: 'var(--accent)' }}>{fmt(grandTotal)}</span>
                 
                 

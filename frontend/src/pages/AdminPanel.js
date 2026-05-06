@@ -489,8 +489,12 @@ function BackupModal({ onClose }) {
       const res = await downloadBackup();
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/json' }));
       const a   = document.createElement('a');
-      const ts  = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      a.href = url; a.download = `bakesale_backup_${ts}.json`;
+      // FIX Issue 4: Use filename from backend Content-Disposition header
+      const disposition = res.headers['content-disposition'];
+      const filename = disposition
+        ? disposition.split('filename=')[1]?.replace(/"/g, '').trim()
+        : `bakesale_backup_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.json`;
+      a.href = url; a.download = filename;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       toast.success('Backup downloaded successfully!');

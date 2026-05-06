@@ -73,7 +73,7 @@ Section "Install"
 
     DetailPrint "Copying backend files..."
     SetOutPath "$INSTDIR\backend"
-    File /r "..\backend\*.*"
+    File /r /x "*.log" /x "*.pyc" /x "__pycache__" /x "*.sqlite3" /x "venv" "..\backend\*.*"
 
     DetailPrint "Copying frontend files..."
     SetOutPath "$INSTDIR\frontend"
@@ -103,7 +103,7 @@ Section "Install"
     ; Run setup - secret key is now generated inside setup.bat after Python is ready
     DetailPrint "Installing components and setting up server..."
     DetailPrint "This may take 5-10 minutes, please wait..."
-    nsExec::ExecToLog '"$INSTDIR\redist\setup.bat" "$DBPassword"'
+    nsExec::ExecToLog 'cmd /c ""$INSTDIR\redist\setup.bat" "$DBPassword""'
     Pop $0
     ${If} $0 != 0
         MessageBox MB_OK|MB_ICONEXCLAMATION "Setup failed! Please check logs at C:\Bakesale\logs\error.log"
@@ -115,7 +115,7 @@ SectionEnd
 
 Function .onInstSuccess
     ; Get LAN IP using reliable method
-    nsExec::ExecToStack 'powershell -NoProfile -Command "([System.Net.Dns]::GetHostAddresses($env:COMPUTERNAME) | Where-Object {$_.AddressFamily -eq ''InterNetwork''} | Select-Object -First 1).IPAddressToString"'
+    nsExec::ExecToStack 'powershell -NoProfile -Command "& {$ip = [System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) | Where-Object {$_.AddressFamily -eq 2} | Select-Object -First 1; $ip.IPAddressToString}"'
     Pop $0
     Pop $1
 
@@ -137,7 +137,7 @@ FunctionEnd
 
 Section "Uninstall"
     nsExec::Exec 'net stop BakesaleBackend'
-    timeout /t 2
+    Sleep 2000
     nsExec::Exec '"C:\Bakesale\redist\nssm.exe" remove BakesaleBackend confirm'
     nsExec::Exec 'netsh advfirewall firewall delete rule name="Bakesale POS"'
     RMDir /r "C:\Bakesale"

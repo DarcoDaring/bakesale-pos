@@ -216,8 +216,8 @@ class PurchaseBillViewSet(viewsets.ModelViewSet):
         date_to    = request.query_params.get('date_to')
         tax_filter = request.query_params.get('tax_rate')
 
-        # Build purchase-return deduction map
-        pr_qs = PurchaseReturn.objects.filter(status__in=['pending', 'returned'])
+        # Build purchase-return deduction map (confirmed returns only)
+        pr_qs = PurchaseReturn.objects.filter(status='returned')
         if date_from: pr_qs = pr_qs.filter(date__date__gte=date_from)
         if date_to:   pr_qs = pr_qs.filter(date__date__lte=date_to)
 
@@ -472,20 +472,40 @@ class SaleBillViewSet(viewsets.ModelViewSet):
     def item_wise_report(self, request):
         date_from = request.query_params.get('date_from')
         date_to   = request.query_params.get('date_to')
+
         items = SaleItem.objects.all()
         if date_from: items = items.filter(bill__created_at__date__gte=date_from)
         if date_to:   items = items.filter(bill__created_at__date__lte=date_to)
         report = items.values(
             'product__id', 'product__name', 'product__barcode', 'price'
         ).annotate(total_qty=Sum('quantity')).order_by('product__name')
-        return Response([{
-            'product_id':      r['product__id'],
-            'product_name':    r['product__name'],
-            'product_barcode': r['product__barcode'],
-            'mrp':             r['price'],
-            'quantity_sold':   r['total_qty'],
-            'total_amount':    float(r['price']) * float(r['total_qty']),
-        } for r in report])
+
+        # Build return map: {(product_id, price): returned_qty} — customer returns only
+        ret_qs = ItemReturnLine.objects.filter(return_type='customer_return')
+        if date_from: ret_qs = ret_qs.filter(item_return__date__date__gte=date_from)
+        if date_to:   ret_qs = ret_qs.filter(item_return__date__date__lte=date_to)
+        ret_map = {}
+        for rl in ret_qs.values('product_id', 'price').annotate(ret_qty=Sum('quantity')):
+            ret_map[(rl['product_id'], rl['price'])] = Decimal(str(rl['ret_qty']))
+
+        result = []
+        for r in report:
+            sold_qty = Decimal(str(r['total_qty']))
+            price    = Decimal(str(r['price']))
+            ret_qty  = ret_map.get((r['product__id'], r['price']), Decimal('0'))
+            net_qty  = max(sold_qty - ret_qty, Decimal('0'))
+            if net_qty <= 0:
+                continue
+            result.append({
+                'product_id':        r['product__id'],
+                'product_name':      r['product__name'],
+                'product_barcode':   r['product__barcode'],
+                'mrp':               r['price'],
+                'quantity_sold':     float(net_qty),
+                'returned_quantity': float(ret_qty),
+                'total_amount':      round(float(price * net_qty), 2),
+            })
+        return Response(result)
 
     @action(detail=False, methods=['get'])
     def sales_tax_report(self, request):
@@ -551,12 +571,42 @@ class SaleBillViewSet(viewsets.ModelViewSet):
             grand_sgst      += sgst_amt
             grand_total_tax += item_tax
 
+        # Deduct customer returns from sales tax totals
+        ret_qs = ItemReturnLine.objects.filter(return_type='customer_return').select_related('product')
+        if date_from: ret_qs = ret_qs.filter(item_return__date__date__gte=date_from)
+        if date_to:   ret_qs = ret_qs.filter(item_return__date__date__lte=date_to)
+        ret_taxable = 0
+        ret_cgst    = 0
+        ret_sgst    = 0
+        ret_tax     = 0
+        for rl in ret_qs:
+            tax_rate = float(rl.product.tax or 0)
+            if tax_rate == 0:
+                continue
+            if tax_filter:
+                try:
+                    if abs(tax_rate - float(tax_filter)) > 0.001:
+                        continue
+                except ValueError:
+                    pass
+            total        = float(rl.quantity) * float(rl.price)
+            taxable_amt  = total / (1 + tax_rate / 100)
+            item_tax     = total - taxable_amt
+            ret_taxable += taxable_amt
+            ret_cgst    += item_tax / 2
+            ret_sgst    += item_tax / 2
+            ret_tax     += item_tax
+
         return Response({
             'items':               items_data,
-            'grand_taxable':       round(grand_taxable, 2),
-            'grand_cgst':          round(grand_cgst, 2),
-            'grand_sgst':          round(grand_sgst, 2),
-            'grand_tax':           round(grand_total_tax, 2),
+            'grand_taxable':       round(grand_taxable - ret_taxable, 2),
+            'grand_cgst':          round(grand_cgst    - ret_cgst,    2),
+            'grand_sgst':          round(grand_sgst    - ret_sgst,    2),
+            'grand_tax':           round(grand_total_tax - ret_tax,   2),
+            'return_taxable':      round(ret_taxable, 2),
+            'return_cgst':         round(ret_cgst,    2),
+            'return_sgst':         round(ret_sgst,    2),
+            'return_tax':          round(ret_tax,     2),
             'available_tax_rates': sorted(all_tax_rates),
         })
 
@@ -794,11 +844,11 @@ class StockTransferViewSet(viewsets.ModelViewSet):
 
 
 class BackupView(APIView):
-    # FIX: Use IsAdminUser permission class consistently instead of manual role check
     permission_classes = [IsAuthenticated, IsAdminUser]
 
     def get(self, request):
-        """Export full database as JSON."""
+        """Export full database as JSON including all KC models and users."""
+
         def serialize_qs(qs):
             rows = []
             for obj in qs:
@@ -814,9 +864,43 @@ class BackupView(APIView):
                 rows.append(row)
             return rows
 
+        # FIX Issue 2: Include users in backup (without passwords)
+        user_rows = []
+        for u in User.objects.all():
+            user_rows.append({
+                'id':         u.id,
+                'username':   u.username,
+                'role':       u.role,
+                'is_active':  u.is_active,
+                'is_staff':   u.is_staff,
+                'created_at': u.created_at.isoformat() if u.created_at else None,
+            })
+
+        # FIX Issue 2: Include user permissions in backup
+        perm_rows = []
+        for p in UserPermission.objects.all():
+            row = {'id': p.id, 'user_id': p.user_id}
+            for field in p._meta.fields:
+                if field.name not in ('id', 'user'):
+                    row[field.name] = getattr(p, field.name)
+            perm_rows.append(row)
+
+        # FIX Issue 1: Import KC models
+        from .kc_models import (
+            KCSaleItem, KCSaleSubItem, KCBill, KCBillLine,
+            KCPurchase, KCPurchaseLine, KCStock, KCStockLine,
+            KCStoreItem, KCStoreIssue, KCStoreIssueLine, KCClosingStock,
+        )
+
         data = {
-            'version': 1,
+            'version':    2,
             'exported_at': timezone.now().isoformat(),
+
+            # Users
+            'users':             user_rows,
+            'user_permissions':  perm_rows,
+
+            # Main POS data
             'vendors':               serialize_qs(Vendor.objects.all()),
             'products':              serialize_qs(Product.objects.all()),
             'stock_batches':         serialize_qs(StockBatch.objects.all()),
@@ -836,7 +920,22 @@ class BackupView(APIView):
             'item_return_lines':     serialize_qs(ItemReturnLine.objects.all()),
             'physical_stock_reqs':   serialize_qs(PhysicalStockRequest.objects.all()),
             'stock_adjustments':     serialize_qs(StockAdjustmentRequest.objects.all()),
+
+            # FIX Issue 1: Kaapi Chai data
+            'kc_sale_items':         serialize_qs(KCSaleItem.objects.all()),
+            'kc_sale_sub_items':     serialize_qs(KCSaleSubItem.objects.all()),
+            'kc_bills':              serialize_qs(KCBill.objects.all()),
+            'kc_bill_lines':         serialize_qs(KCBillLine.objects.all()),
+            'kc_purchases':          serialize_qs(KCPurchase.objects.all()),
+            'kc_purchase_lines':     serialize_qs(KCPurchaseLine.objects.all()),
+            'kc_stocks':             serialize_qs(KCStock.objects.all()),
+            'kc_stock_lines':        serialize_qs(KCStockLine.objects.all()),
+            'kc_store_items':        serialize_qs(KCStoreItem.objects.all()),
+            'kc_store_issues':       serialize_qs(KCStoreIssue.objects.all()),
+            'kc_store_issue_lines':  serialize_qs(KCStoreIssueLine.objects.all()),
+            'kc_closing_stocks':     serialize_qs(KCClosingStock.objects.all()),
         }
+
         from django.http import JsonResponse
         response = JsonResponse(data)
         filename = f"bakesale_backup_{timezone.now().strftime('%d-%m-%y_%I-%M%p')}.json"
@@ -846,13 +945,10 @@ class BackupView(APIView):
     def post(self, request):
         """
         Restore database from uploaded JSON backup.
-        FIX: Added confirmation phrase requirement to prevent accidental wipes.
-        FIX: Added size limit on raw JSON body (not just file uploads).
-        FIX: Restored original dates for all models instead of using auto_now_add.
+        Supports both version 1 and version 2 backups.
         """
-        # FIX: Require confirmation phrase to prevent accidental database wipes
+        # Require confirmation phrase to prevent accidental wipes
         confirm = request.data.get('confirm') or request.FILES.get('confirm')
-        # When uploading a file the confirm comes as a form field string
         if hasattr(confirm, 'read'):
             confirm = confirm.read().decode('utf-8').strip()
         if str(confirm) != 'RESTORE_CONFIRMED':
@@ -869,17 +965,40 @@ class BackupView(APIView):
                 data = json.loads(raw)
             else:
                 data = request.data
-                # FIX: Enforce size limit on raw JSON body too
                 import sys
                 if sys.getsizeof(str(data)) > 50 * 1024 * 1024:
                     return Response({'detail': 'Data too large (max 50MB)'}, status=400)
 
-            if data.get('version') != 1:
+            # FIX Issue 6: Support both version 1 and version 2
+            version = data.get('version')
+            if version not in (1, 2):
                 return Response({'detail': 'Invalid or unsupported backup format'}, status=400)
+
+            # FIX Issue 1: Import KC models
+            from .kc_models import (
+                KCSaleItem, KCSaleSubItem, KCBill, KCBillLine,
+                KCPurchase, KCPurchaseLine, KCStock, KCStockLine,
+                KCStoreItem, KCStoreIssue, KCStoreIssueLine, KCClosingStock,
+            )
 
             from django.db import transaction as db_transaction
             with db_transaction.atomic():
-                # Delete in reverse dependency order
+
+                # ── Delete KC data first (references User) ──────────────────
+                KCClosingStock.objects.all().delete()
+                KCStoreIssueLine.objects.all().delete()
+                KCStoreIssue.objects.all().delete()
+                KCStockLine.objects.all().delete()
+                KCStock.objects.all().delete()
+                KCPurchaseLine.objects.all().delete()
+                KCPurchase.objects.all().delete()
+                KCBillLine.objects.all().delete()
+                KCBill.objects.all().delete()
+                KCSaleSubItem.objects.all().delete()
+                KCSaleItem.objects.all().delete()
+                KCStoreItem.objects.all().delete()
+
+                # ── Delete main POS data (reverse dependency order) ──────────
                 StockAdjustmentRequest.objects.all().delete()
                 PhysicalStockRequest.objects.all().delete()
                 ItemReturnLine.objects.all().delete()
@@ -900,10 +1019,16 @@ class BackupView(APIView):
                 Product.objects.all().delete()
                 Vendor.objects.all().delete()
 
+                # FIX Issue 2: Delete user permissions and non-admin users
+                UserPermission.objects.all().delete()
+                # Keep current admin user, restore others
+                current_user_id = request.user.id
+                User.objects.exclude(id=current_user_id).delete()
+
+                # ── Helpers ──────────────────────────────────────────────────
                 def d(v):
                     return Decimal(str(v)) if v is not None else None
 
-                # FIX: Helper to parse ISO datetime strings back into aware datetimes
                 from django.utils.dateparse import parse_datetime
                 def dt(v):
                     if not v:
@@ -914,12 +1039,52 @@ class BackupView(APIView):
                         parsed = tz.make_aware(parsed)
                     return parsed
 
+                # ── FIX Issue 2: Restore users ───────────────────────────────
+                # Keep a map of old_id -> new_id for users
+                # since current admin may have a different id than backup
+                user_id_map = {current_user_id: current_user_id}
+
+                for r in data.get('users', []):
+                    # Skip if this is the current logged-in admin
+                    if r['id'] == current_user_id:
+                        continue
+                    # Skip if username already exists (current admin)
+                    if User.objects.filter(username=r['username']).exists():
+                        existing = User.objects.get(username=r['username'])
+                        user_id_map[r['id']] = existing.id
+                        continue
+                    # Restore user without password (they'll need to reset)
+                    user = User(
+                        id=r['id'],
+                        username=r['username'],
+                        role=r.get('role', 'general'),
+                        is_active=r.get('is_active', True),
+                        is_staff=r.get('is_staff', False),
+                    )
+                    user.set_unusable_password()
+                    user.save()
+                    user_id_map[r['id']] = r['id']
+
+                # ── Restore user permissions ─────────────────────────────────
+                for r in data.get('user_permissions', []):
+                    user_id = user_id_map.get(r.get('user_id'))
+                    if not user_id:
+                        continue
+                    try:
+                        user_obj = User.objects.get(id=user_id)
+                    except User.DoesNotExist:
+                        continue
+                    perm_data = {k: v for k, v in r.items() if k not in ('id', 'user_id')}
+                    UserPermission.objects.create(user=user_obj, **perm_data)
+
+                # ── Restore vendors ──────────────────────────────────────────
                 for r in data.get('vendors', []):
                     Vendor.objects.create(
                         id=r['id'], name=r['name'],
                         phone=r.get('phone'), is_active=r.get('is_active', True),
                     )
 
+                # ── Restore products ─────────────────────────────────────────
                 for r in data.get('products', []):
                     Product.objects.create(
                         id=r['id'], barcode=r['barcode'], name=r['name'],
@@ -932,22 +1097,24 @@ class BackupView(APIView):
                         is_active=r.get('is_active', True),
                     )
 
+                # ── Restore stock batches ────────────────────────────────────
                 for r in data.get('stock_batches', []):
                     StockBatch.objects.create(
                         id=r['id'], product_id=r['product_id'],
                         mrp=d(r['mrp']), quantity=d(r.get('quantity', 0)),
                     )
 
+                # ── Restore purchase bills ───────────────────────────────────
                 for r in data.get('purchase_bills', []):
                     obj = PurchaseBill.objects.create(
                         id=r['id'], purchase_number=r['purchase_number'],
                         vendor_id=r.get('vendor_id'), is_paid=r.get('is_paid', True),
                         created_by_id=None,
                     )
-                    # FIX: Restore original date
                     if r.get('date'):
                         PurchaseBill.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
+                # ── Restore purchases ────────────────────────────────────────
                 for r in data.get('purchases', []):
                     obj = Purchase.objects.create(
                         id=r['id'], bill_id=r.get('bill_id'),
@@ -964,6 +1131,7 @@ class BackupView(APIView):
                     if r.get('date'):
                         Purchase.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
+                # ── Restore sale bills ───────────────────────────────────────
                 for r in data.get('sale_bills', []):
                     obj = SaleBill.objects.create(
                         id=r['id'], bill_number=r['bill_number'],
@@ -974,10 +1142,10 @@ class BackupView(APIView):
                         upi_amount=d(r.get('upi_amount', 0)),
                         created_by_id=None,
                     )
-                    # FIX: Restore original created_at date
                     if r.get('created_at'):
                         SaleBill.objects.filter(pk=obj.pk).update(created_at=dt(r['created_at']))
 
+                # ── Restore sale items ───────────────────────────────────────
                 for r in data.get('sale_items', []):
                     SaleItem.objects.create(
                         id=r['id'], bill_id=r['bill_id'],
@@ -985,9 +1153,10 @@ class BackupView(APIView):
                         batch_id=r.get('batch_id'),
                         quantity=d(r['quantity']),
                         price=d(r['price']),
-                        tax=d(r.get('tax', 0))
+                        tax=d(r.get('tax', 0)),
                     )
 
+                # ── Restore return items ─────────────────────────────────────
                 for r in data.get('return_items', []):
                     obj = ReturnItem.objects.create(
                         id=r['id'], product_id=r['product_id'],
@@ -998,6 +1167,7 @@ class BackupView(APIView):
                     if r.get('date'):
                         ReturnItem.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
+                # ── Restore internal masters ─────────────────────────────────
                 for r in data.get('internal_masters', []):
                     InternalSaleMaster.objects.create(
                         id=r['id'], name=r['name'],
@@ -1005,6 +1175,18 @@ class BackupView(APIView):
                         created_by_id=None,
                     )
 
+                # ── Restore internal sale bills ──────────────────────────────
+                for r in data.get('internal_sale_bills', []):
+                    obj = InternalSaleBill.objects.create(
+                        id=r['id'],
+                        destination_id=r['destination_id'],
+                        sale_number=r.get('sale_number', ''),
+                        created_by_id=None,
+                    )
+                    if r.get('date'):
+                        InternalSaleBill.objects.filter(pk=obj.pk).update(date=dt(r['date']))
+
+                # ── Restore internal sales ───────────────────────────────────
                 for r in data.get('internal_sales', []):
                     obj = InternalSale.objects.create(
                         id=r['id'], product_id=r['product_id'],
@@ -1017,6 +1199,7 @@ class BackupView(APIView):
                     if r.get('date'):
                         InternalSale.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
+                # ── Restore purchase returns ─────────────────────────────────
                 for r in data.get('purchase_returns', []):
                     obj = PurchaseReturn.objects.create(
                         id=r['id'], product_id=r['product_id'],
@@ -1031,6 +1214,7 @@ class BackupView(APIView):
                     if r.get('date'):
                         PurchaseReturn.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
+                # ── Restore direct masters ───────────────────────────────────
                 for r in data.get('direct_masters', []):
                     DirectSaleMaster.objects.create(
                         id=r['id'], name=r['name'],
@@ -1038,6 +1222,7 @@ class BackupView(APIView):
                         created_by_id=None,
                     )
 
+                # ── Restore direct sales ─────────────────────────────────────
                 for r in data.get('direct_sales', []):
                     obj = DirectSale.objects.create(
                         id=r['id'], item_id=r['item_id'],
@@ -1051,6 +1236,7 @@ class BackupView(APIView):
                     if r.get('date'):
                         DirectSale.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
+                # ── Restore stock transfers ──────────────────────────────────
                 for r in data.get('stock_transfers', []):
                     obj = StockTransfer.objects.create(
                         id=r['id'], product_id=r['product_id'],
@@ -1063,16 +1249,7 @@ class BackupView(APIView):
                     if r.get('date'):
                         StockTransfer.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
-                for r in data.get('internal_sale_bills', []):
-                    obj = InternalSaleBill.objects.create(
-                        id=r['id'],
-                        destination_id=r['destination_id'],
-                        sale_number=r.get('sale_number', ''),
-                        created_by_id=None,
-                    )
-                    if r.get('date'):
-                        InternalSaleBill.objects.filter(pk=obj.pk).update(date=dt(r['date']))
-
+                # ── Restore item returns ─────────────────────────────────────
                 for r in data.get('item_returns', []):
                     obj = ItemReturn.objects.create(
                         id=r['id'],
@@ -1087,6 +1264,7 @@ class BackupView(APIView):
                     if r.get('date'):
                         ItemReturn.objects.filter(pk=obj.pk).update(date=dt(r['date']))
 
+                # ── Restore item return lines ────────────────────────────────
                 for r in data.get('item_return_lines', []):
                     ItemReturnLine.objects.create(
                         id=r['id'],
@@ -1098,6 +1276,7 @@ class BackupView(APIView):
                         return_type=r.get('return_type', 'customer_return'),
                     )
 
+                # ── Restore physical stock requests ──────────────────────────
                 for r in data.get('physical_stock_reqs', []):
                     obj = PhysicalStockRequest.objects.create(
                         id=r['id'],
@@ -1111,6 +1290,7 @@ class BackupView(APIView):
                         PhysicalStockRequest.objects.filter(pk=obj.pk).update(
                             created_at=dt(r['created_at']))
 
+                # ── Restore stock adjustments ────────────────────────────────
                 for r in data.get('stock_adjustments', []):
                     obj = StockAdjustmentRequest.objects.create(
                         id=r['id'],
@@ -1127,9 +1307,124 @@ class BackupView(APIView):
                         StockAdjustmentRequest.objects.filter(pk=obj.pk).update(
                             created_at=dt(r['created_at']))
 
-            # Reset PostgreSQL sequences
+                # ── FIX Issue 1: Restore Kaapi Chai data ────────────────────
+
+                for r in data.get('kc_store_items', []):
+                    KCStoreItem.objects.create(
+                        id=r['id'], name=r['name'],
+                        unit=r.get('unit', 'kg'),
+                        is_active=r.get('is_active', True),
+                    )
+
+                for r in data.get('kc_sale_items', []):
+                    KCSaleItem.objects.create(
+                        id=r['id'], name=r['name'],
+                        item_type=r.get('item_type', 'direct'),
+                        price=d(r.get('price', 0)),
+                        is_active=r.get('is_active', True),
+                        purchase_required=r.get('purchase_required', False),
+                    )
+
+                for r in data.get('kc_sale_sub_items', []):
+                    KCSaleSubItem.objects.create(
+                        id=r['id'], parent_id=r['parent_id'],
+                        name=r['name'], price=d(r['price']),
+                    )
+
+                for r in data.get('kc_purchases', []):
+                    obj = KCPurchase.objects.create(
+                        id=r['id'],
+                        purchase_number=r.get('purchase_number', ''),
+                        group_id=r.get('group_id'),
+                        group_name=r.get('group_name', ''),
+                        total=d(r.get('total', 0)),
+                        created_by_id=None,
+                    )
+                    if r.get('created_at'):
+                        KCPurchase.objects.filter(pk=obj.pk).update(created_at=dt(r['created_at']))
+
+                for r in data.get('kc_purchase_lines', []):
+                    KCPurchaseLine.objects.create(
+                        id=r['id'], purchase_id=r['purchase_id'],
+                        item_id=r.get('item_id'),
+                        item_name=r.get('item_name', ''),
+                        qty=d(r['qty']),
+                        cost=d(r.get('cost', 0)),
+                    )
+
+                for r in data.get('kc_bills', []):
+                    obj = KCBill.objects.create(
+                        id=r['id'],
+                        bill_number=r.get('bill_number', ''),
+                        total=d(r['total']),
+                        payment_type=r.get('payment_type', 'cash'),
+                        cash_amount=d(r.get('cash_amount', 0)),
+                        card_amount=d(r.get('card_amount', 0)),
+                        upi_amount=d(r.get('upi_amount', 0)),
+                        created_by_id=None,
+                    )
+                    if r.get('created_at'):
+                        KCBill.objects.filter(pk=obj.pk).update(created_at=dt(r['created_at']))
+
+                for r in data.get('kc_bill_lines', []):
+                    KCBillLine.objects.create(
+                        id=r['id'], bill_id=r['bill_id'],
+                        item_id=r.get('item_id'),
+                        item_name=r.get('item_name', ''),
+                        qty=d(r['qty']),
+                        price=d(r['price']),
+                    )
+
+                for r in data.get('kc_stocks', []):
+                    obj = KCStock.objects.create(
+                        id=r['id'],
+                        stock_number=r.get('stock_number', ''),
+                        created_by_id=None,
+                    )
+                    if r.get('created_at'):
+                        KCStock.objects.filter(pk=obj.pk).update(created_at=dt(r['created_at']))
+
+                for r in data.get('kc_stock_lines', []):
+                    KCStockLine.objects.create(
+                        id=r['id'], stock_id=r['stock_id'],
+                        item_id=r.get('item_id'),
+                        item_name=r.get('item_name', ''),
+                        qty=d(r['qty']),
+                        carry_forward=r.get('carry_forward', False),
+                    )
+
+                for r in data.get('kc_store_issues', []):
+                    obj = KCStoreIssue.objects.create(
+                        id=r['id'],
+                        issue_number=r.get('issue_number', ''),
+                        total=d(r.get('total', 0)),
+                        created_by_id=None,
+                    )
+                    if r.get('created_at'):
+                        KCStoreIssue.objects.filter(pk=obj.pk).update(created_at=dt(r['created_at']))
+
+                for r in data.get('kc_store_issue_lines', []):
+                    KCStoreIssueLine.objects.create(
+                        id=r['id'], issue_id=r['issue_id'],
+                        item_id=r.get('item_id'),
+                        item_name=r.get('item_name', ''),
+                        unit=r.get('unit', 'kg'),
+                        qty=d(r['qty']),
+                        cost=d(r.get('cost', 0)),
+                    )
+
+                for r in data.get('kc_closing_stocks', []):
+                    KCClosingStock.objects.create(
+                        id=r['id'], item_id=r['item_id'],
+                        qty=d(r['qty']),
+                        cost_per_unit=d(r.get('cost_per_unit', 0)),
+                        updated_by_id=None,
+                    )
+
+            # ── Reset PostgreSQL sequences ────────────────────────────────────
             from django.db import connection
             tables_with_sequences = [
+                ('api_user',                  'id'),
                 ('api_vendor',                'id'),
                 ('api_product',               'id'),
                 ('api_stockbatch',            'id'),
@@ -1149,6 +1444,18 @@ class BackupView(APIView):
                 ('api_itemreturnline',        'id'),
                 ('api_physicalstockrequest',  'id'),
                 ('api_stockadjustmentrequest','id'),
+                ('api_kcsaleitem',            'id'),
+                ('api_kcsalesubitem',         'id'),
+                ('api_kcbill',                'id'),
+                ('api_kcbillline',            'id'),
+                ('api_kcpurchase',            'id'),
+                ('api_kcpurchaseline',        'id'),
+                ('api_kcstock',               'id'),
+                ('api_kcstockline',           'id'),
+                ('api_kcstoreitem',           'id'),
+                ('api_kcstoreissue',          'id'),
+                ('api_kcstoreissueline',      'id'),
+                ('api_kcclosingstock',        'id'),
             ]
             with connection.cursor() as cursor:
                 for table, col in tables_with_sequences:
@@ -1157,10 +1464,12 @@ class BackupView(APIView):
                         f"COALESCE((SELECT MAX({col}) FROM {table}), 0) + 1, false)"
                     )
 
-            return Response({'detail': 'Backup restored successfully'})
+            return Response({
+                'detail': 'Backup restored successfully. Note: Restored users will need their passwords reset.'
+            })
+
         except Exception as e:
             return Response({'detail': f'Restore failed: {str(e)}'}, status=400)
-
 
 class UserPermissionViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]

@@ -150,50 +150,52 @@ class PurchaseBillSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'purchase_number', 'date']
 
     def create(self, validated_data):
-        items_data      = validated_data.pop('items')
-        purchase_number = PurchaseBill.generate_purchase_number()
-        bill = PurchaseBill.objects.create(
-            purchase_number=purchase_number,
-            **validated_data
-        )
+        items_data = validated_data.pop('items')
 
-        for item_data in items_data:
-            product       = item_data['product']
-            quantity      = item_data['quantity']
-            selling_qty   = item_data.get('selling_qty', 1)
-            mrp           = item_data['mrp']
-            selling_unit  = item_data['selling_unit']
-            purchase_unit = item_data.get('purchase_unit', 'nos')
+        with transaction.atomic():
+            purchase_number = PurchaseBill.generate_purchase_number()
+            bill = PurchaseBill.objects.create(
+                purchase_number=purchase_number,
+                **validated_data
+            )
 
-            Purchase.objects.create(bill=bill, **item_data)
+            for item_data in items_data:
+                product       = item_data['product']
+                quantity      = item_data['quantity']
+                selling_qty   = item_data.get('selling_qty', 1)
+                mrp           = item_data['mrp']
+                selling_unit  = item_data['selling_unit']
+                purchase_unit = item_data.get('purchase_unit', 'nos')
 
-            if purchase_unit == 'case':
-                stock_to_add = Decimal(str(float(quantity) * float(selling_qty)))
-            else:
-                stock_to_add = Decimal(str(float(quantity)))
+                Purchase.objects.create(bill=bill, **item_data)
 
-            mrp_decimal = Decimal(str(mrp)).quantize(Decimal('0.01'))
+                if purchase_unit == 'case':
+                    stock_to_add = Decimal(str(float(quantity) * float(selling_qty)))
+                else:
+                    stock_to_add = Decimal(str(float(quantity)))
 
-            existing_batch = None
-            for b in StockBatch.objects.filter(product=product):
-                if Decimal(str(b.mrp)).quantize(Decimal('0.01')) == mrp_decimal:
-                    existing_batch = b
-                    break
+                mrp_decimal = Decimal(str(mrp)).quantize(Decimal('0.01'))
 
-            if existing_batch:
-                existing_batch.quantity = Decimal(str(existing_batch.quantity)) + stock_to_add
-                existing_batch.save()
-            else:
-                StockBatch.objects.create(product=product, mrp=mrp_decimal, quantity=stock_to_add)
+                existing_batch = None
+                for b in StockBatch.objects.filter(product=product):
+                    if Decimal(str(b.mrp)).quantize(Decimal('0.01')) == mrp_decimal:
+                        existing_batch = b
+                        break
 
-            product.stock_quantity = Decimal(str(product.stock_quantity)) + stock_to_add
-            product.selling_unit   = selling_unit
-            product.selling_price  = mrp_decimal
-            if item_data.get('tax') is not None:
-                product.tax = item_data['tax']
-            product.save()
+                if existing_batch:
+                    existing_batch.quantity = Decimal(str(existing_batch.quantity)) + stock_to_add
+                    existing_batch.save()
+                else:
+                    StockBatch.objects.create(product=product, mrp=mrp_decimal, quantity=stock_to_add)
 
-        return bill
+                product.stock_quantity = Decimal(str(product.stock_quantity)) + stock_to_add
+                product.selling_unit   = selling_unit
+                product.selling_price  = mrp_decimal
+                if item_data.get('tax') is not None:
+                    product.tax = item_data['tax']
+                product.save()
+
+            return bill
 
 
 class SaleItemSerializer(serializers.ModelSerializer):

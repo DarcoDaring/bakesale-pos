@@ -53,13 +53,10 @@ function isPortFree(port) {
 async function startDjango() {
   const free = await isPortFree(BACKEND_PORT);
   if (!free) {
-    console.log('Port', BACKEND_PORT, 'in use — killing existing process...');
-    // Kill any existing python/django on this port
-    const { execSync } = require('child_process');
-    try {
-      execSync(`for /f "tokens=5" %a in ('netstat -ano ^| findstr :${BACKEND_PORT} ^| findstr LISTENING') do taskkill /f /pid %a`, { shell: true });
-    } catch {}
-    await new Promise(r => setTimeout(r, 1000));
+    console.log('Port', BACKEND_PORT, 'already in use — backend already running as service, connecting...');
+    // Backend is already running as Windows Service - just connect to it
+    await waitForDjango(BACKEND_PORT);
+    return;
   }
 
   // Find the backend folder — go up from electron/ to project root, then into backend/

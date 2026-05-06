@@ -620,10 +620,10 @@ export default function Reports() {
           <div style="font-size:11px;color:#888;margin-top:4px">Printed: ${new Date().toLocaleString()}</div>
         </div>
         <div style="border:1px solid #ddd;margin-bottom:20px;padding:12px 16px;display:flex;gap:40px;font-size:13px">
-          <div>Taxable: <strong>${fmt(data.grand_taxable||adjTaxable)}</strong></div>
-          <div>CGST: <strong>${fmt(data.grand_cgst||adjCgst)}</strong></div>
-          <div>SGST: <strong>${fmt(data.grand_sgst||adjSgst)}</strong></div>
-          <div>Total Tax: <strong>${fmt(data.grand_tax||adjTax)}</strong></div>
+          <div>Taxable: <strong>${fmt(data.grand_taxable)}</strong></div>
+          <div>CGST: <strong>${fmt(data.grand_cgst)}</strong></div>
+          <div>SGST: <strong>${fmt(data.grand_sgst)}</strong></div>
+          <div>Total Tax: <strong>${fmt(data.grand_tax)}</strong></div>
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:11px">
           <thead><tr style="background:#f0f0f0">
@@ -648,10 +648,10 @@ export default function Reports() {
           </tr>`).join('')}</tbody>
           <tfoot><tr style="background:#f0f0f0;font-weight:800">
             <td colspan="4" style="border:1px solid #ccc;padding:6px">TOTAL</td>
-            <td style="border:1px solid #ccc;padding:6px">${fmt(data.grand_taxable||adjTaxable)}</td>
-            <td style="border:1px solid #ccc;padding:6px">${fmt(data.grand_cgst||adjCgst)}</td>
-            <td style="border:1px solid #ccc;padding:6px">${fmt(data.grand_sgst||adjSgst)}</td>
-            <td style="border:1px solid #ccc;padding:6px">${fmt(data.grand_tax||adjTax)}</td>
+            <td style="border:1px solid #ccc;padding:6px">${fmt(data.grand_taxable)}</td>
+            <td style="border:1px solid #ccc;padding:6px">${fmt(data.grand_cgst)}</td>
+            <td style="border:1px solid #ccc;padding:6px">${fmt(data.grand_sgst)}</td>
+            <td style="border:1px solid #ccc;padding:6px">${fmt(data.grand_tax)}</td>
           </tr></tfoot>
         </table>
       </div>`;
@@ -986,25 +986,10 @@ export default function Reports() {
 
           {/* ── Item-wise ── */}
           {tab === 'itemwise' && (() => {
-            const crMap = {};
-            (itemReturnData.returns || []).forEach(r => {
-              (r.lines || []).filter(l => l.return_type === 'customer_return').forEach(l => {
-                if (!crMap[l.product_name]) crMap[l.product_name] = { qty: 0, total: 0 };
-                crMap[l.product_name].qty   += parseFloat(l.quantity || 0);
-                crMap[l.product_name].total += parseFloat(l.total    || 0);
-              });
-            });
+            // Backend already returns NET quantities (returned items deducted)
             const adjustedItems = itemData
-              .map(item => {
-                const ret = crMap[item.product_name] || { qty: 0, total: 0 };
-                return {
-                  ...item,
-                  quantity_sold: Math.max(0, parseFloat(item.quantity_sold) - ret.qty),
-                  total_amount:  Math.max(0, parseFloat(item.total_amount)  - ret.total),
-                  _returned: ret.qty > 0,
-                };
-              })
-              .filter(item => item.quantity_sold > 0);
+              .filter(item => item.quantity_sold > 0)
+              .map(item => ({ ...item, _returned: (item.returned_quantity || 0) > 0 }));
             return (
               <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                 <table>
@@ -1228,10 +1213,10 @@ export default function Reports() {
                 {salesTaxData && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 16 }}>
                     {[
-                      { label: 'Taxable Amount', value: fmt(adjTaxable), color: 'var(--text)' },
-                      { label: 'Total CGST',     value: fmt(adjCgst),    color: 'var(--blue)' },
-                      { label: 'Total SGST',     value: fmt(adjSgst),    color: 'var(--purple)' },
-                      { label: 'Total Tax',      value: fmt(adjTax),     color: 'var(--accent)' },
+                      { label: 'Taxable Amount', value: fmt(salesTaxData.grand_taxable), color: 'var(--text)' },
+                      { label: 'Total CGST',     value: fmt(salesTaxData.grand_cgst),    color: 'var(--blue)' },
+                      { label: 'Total SGST',     value: fmt(salesTaxData.grand_sgst),    color: 'var(--purple)' },
+                      { label: 'Total Tax',      value: fmt(salesTaxData.grand_tax),     color: 'var(--accent)' },
                     ].map(s => (
                       <div key={s.label} className="stat-card"><div className="label">{s.label}</div><div className="value" style={{ color: s.color }}>{s.value}</div></div>
                     ))}
