@@ -1,0 +1,198 @@
+
+================================
+  Bakesale Backend Updater
+================================
+
+Recently modified files:
+----------------------------------------
+  C:\Bakesale\backend\.env
+  C:\Bakesale\backend\bakesale.log
+  C:\Bakesale\backend\requirements.txt
+  C:\Bakesale\backend\api\kc_views.py
+  C:\Bakesale\backend\api\serializers.py
+  C:\Bakesale\backend\api\views.py
+  C:\Bakesale\backend\staticfiles\admin\css\autocomplete.css
+  C:\Bakesale\backend\staticfiles\admin\css\base.css
+  C:\Bakesale\backend\staticfiles\admin\css\changelists.css
+  C:\Bakesale\backend\staticfiles\admin\css\dark_mode.css
+  C:\Bakesale\backend\staticfiles\admin\css\dashboard.css
+  C:\Bakesale\backend\staticfiles\admin\css\forms.css
+  C:\Bakesale\backend\staticfiles\admin\css\login.css
+  C:\Bakesale\backend\staticfiles\admin\css\nav_sidebar.css
+  C:\Bakesale\backend\staticfiles\admin\css\responsive.css
+  C:\Bakesale\backend\staticfiles\admin\css\responsive_rtl.css
+  C:\Bakesale\backend\staticfiles\admin\css\rtl.css
+  C:\Bakesale\backend\staticfiles\admin\css\unusable_password_field.css
+  C:\Bakesale\backend\staticfiles\admin\css\widgets.css
+  C:\Bakesale\backend\staticfiles\admin\css\vendor\select2\LICENSE-SELECT2.md
+  C:\Bakesale\backend\staticfiles\admin\css\vendor\select2\select2.css
+  C:\Bakesale\backend\staticfiles\admin\css\vendor\select2\select2.min.css
+  C:\Bakesale\backend\staticfiles\admin\img\calendar-icons.svg
+  C:\Bakesale\backend\staticfiles\admin\img\icon-addlink.svg
+  C:\Bakesale\backend\staticfiles\admin\img\icon-alert.svg
+  C:\Bakesale\backend\staticfiles\admin\img\icon-calendar.svg
+  C:\Bakesale\backend\staticfiles\admin\img\icon-changelink.svg
+  C:\Bakesale\backend\staticfiles\admin\img\icon-clock.svg
+  C:\Bakesale\backend\staticfiles\admin\img\icon-deletelink.svg
+  C:\Bakesale\backend\staticfiles\admin\img\icon-hidelink.svg
+  C:\Bakesale\backend\staticfiles\admin\img\icon-no.svg
+  C:\Bakesale\backend\staticfiles\admin\img\icon-unknown-alt.svg
+  C:\Bakesale\backend\staticfiles\admin\img\icon-unknown.svg
+  C:\Bakesale\backend\staticfiles\admin\img\icon-viewlink.svg
+  C:\Bakesale\backend\staticfiles\admin\img\icon-yes.svg
+  C:\Bakesale\backend\staticfiles\admin\img\inline-delete.svg
+  C:\Bakesale\backend\staticfiles\admin\img\LICENSE
+  C:\Bakesale\backend\staticfiles\admin\img\README.txt
+  C:\Bakesale\backend\staticfiles\admin\img\search.svg
+  C:\Bakesale\backend\staticfiles\admin\img\selector-icons.svg
+  C:\Bakesale\backend\staticfiles\admin\img\sorting-icons.svg
+  C:\Bakesale\backend\staticfiles\admin\img\tooltag-add.svg
+  C:\Bakesale\backend\staticfiles\admin\img\tooltag-arrowright.svg
+  C:\Bakesale\backend\staticfiles\admin\img\gis\move_vertex_off.svg
+  C:\Bakesale\backend\staticfiles\admin\img\gis\move_vertex_on.svg
+  C:\Bakesale\backend\staticfiles\admin\js\actions.js
+  C:\Bakesale\backend\staticfiles\admin\js\autocomplete.js
+  C:\Bakesale\backend\staticfiles\admin\js\calendar.js
+  C:\Bakesale\backend\staticfiles\admin\js\cancel.js
+  C:\Bakesale\backend\staticfiles\admin\js\change_form.js
+  C:\Bakesale\backend\staticfiles\admin\js\core.js
+  C:\Bakesale\backend\staticfiles\admin\js\filters.js
+  C:\Bakesale\backend\staticfiles\admin\js\inlines.js
+  C:\Bakesale\backend\staticfiles\admin\js\jquery.init.js
+  C:\Bakesale\backend\staticfiles\admin\js\nav_sidebar.js
+  C:\Bakesale\backend\staticfiles\admin\js\popup_response.js
+  C:\Bakesale\backend\staticfiles\admin\js\prepopulate.js
+  C:\Bakesale\backend\staticfiles\admin\js\prepopulate_init.js
+  C:\Bakesale\backend\staticfiles\admin\js\SelectBox.js
+  C:\Bakesale\backend\staticfiles\admin\js\SelectFilter2.js
+  C:\Bakesale\backend\staticfiles\admin\js\theme.js
+  C:\Bakesale\backend\staticfiles\admin\js\unusable_password_field.js
+  C:\Bakesale\backend\staticfiles\admin\js\urlify.js
+  C:\Bakesale\backend\staticfiles\admin\js\admin\DateTimeShortcuts.js
+  C:\Bakesale\backend\staticfiles\admin\js\admin\RelatedObjectLookups.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\jquery\jquery.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\jquery\jquery.min.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\jquery\LICENSE.txt
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\LICENSE.md
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\select2.full.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\select2.full.min.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\af.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\ar.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\az.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\bg.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\bn.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\bs.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\ca.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\cs.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\da.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\de.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\dsb.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\el.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\en.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\es.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\et.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\eu.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\fa.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\fi.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\fr.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\gl.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\he.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\hi.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\hr.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\hsb.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\hu.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\hy.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\id.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\is.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\it.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\ja.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\ka.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\km.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\ko.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\lt.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\lv.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\mk.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\ms.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\nb.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\ne.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\nl.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\pl.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\ps.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\pt-BR.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\pt.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\ro.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\ru.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\sk.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\sl.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\sq.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\sr-Cyrl.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\sr.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\sv.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\th.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\tk.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\tr.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\uk.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\vi.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\zh-CN.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\select2\i18n\zh-TW.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\xregexp\LICENSE.txt
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\xregexp\xregexp.js
+  C:\Bakesale\backend\staticfiles\admin\js\vendor\xregexp\xregexp.min.js
+  C:\Bakesale\backend\staticfiles\rest_framework\css\bootstrap-theme.min.css
+  C:\Bakesale\backend\staticfiles\rest_framework\css\bootstrap-theme.min.css.map
+  C:\Bakesale\backend\staticfiles\rest_framework\css\bootstrap-tweaks.css
+  C:\Bakesale\backend\staticfiles\rest_framework\css\bootstrap.min.css
+  C:\Bakesale\backend\staticfiles\rest_framework\css\bootstrap.min.css.map
+  C:\Bakesale\backend\staticfiles\rest_framework\css\default.css
+  C:\Bakesale\backend\staticfiles\rest_framework\css\font-awesome-4.0.3.css
+  C:\Bakesale\backend\staticfiles\rest_framework\css\prettify.css
+  C:\Bakesale\backend\staticfiles\rest_framework\fonts\fontawesome-webfont.eot
+  C:\Bakesale\backend\staticfiles\rest_framework\fonts\fontawesome-webfont.svg
+  C:\Bakesale\backend\staticfiles\rest_framework\fonts\fontawesome-webfont.ttf
+  C:\Bakesale\backend\staticfiles\rest_framework\fonts\fontawesome-webfont.woff
+  C:\Bakesale\backend\staticfiles\rest_framework\fonts\glyphicons-halflings-regular.eot
+  C:\Bakesale\backend\staticfiles\rest_framework\fonts\glyphicons-halflings-regular.svg
+  C:\Bakesale\backend\staticfiles\rest_framework\fonts\glyphicons-halflings-regular.ttf
+  C:\Bakesale\backend\staticfiles\rest_framework\fonts\glyphicons-halflings-regular.woff
+  C:\Bakesale\backend\staticfiles\rest_framework\fonts\glyphicons-halflings-regular.woff2
+  C:\Bakesale\backend\staticfiles\rest_framework\img\glyphicons-halflings-white.png
+  C:\Bakesale\backend\staticfiles\rest_framework\img\glyphicons-halflings.png
+  C:\Bakesale\backend\staticfiles\rest_framework\img\grid.png
+  C:\Bakesale\backend\staticfiles\rest_framework\js\ajax-form.js
+  C:\Bakesale\backend\staticfiles\rest_framework\js\bootstrap.min.js
+  C:\Bakesale\backend\staticfiles\rest_framework\js\csrf.js
+  C:\Bakesale\backend\staticfiles\rest_framework\js\default.js
+  C:\Bakesale\backend\staticfiles\rest_framework\js\jquery-3.7.1.min.js
+  C:\Bakesale\backend\staticfiles\rest_framework\js\load-ajax-form.js
+  C:\Bakesale\backend\staticfiles\rest_framework\js\prettify-min.js
+----------------------------------------
+
+[1/3] Running database migrations...
+Operations to perform:
+  Apply all migrations: admin, api, auth, contenttypes, sessions
+Running migrations:
+  No migrations to apply.
+OK - Migrations done.
+
+[2/3] Collecting static files...
+OK - Static files collected.
+
+[3/3] Restarting Bakesale service...
+OK - Service restarted.
+
+================================
+  Update Complete Successfully!
+================================
+
+Press any key to continue . . .
+
+
+
+
+
+
+
+
+
+
+
