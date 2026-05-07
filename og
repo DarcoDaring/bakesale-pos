@@ -1,11 +1,3014 @@
-C:\Users\user>cd /d "C:\Bakesale\backend"
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+C:\Bakesale\venv\Scripts\python.exe: No module named waitress
+Error: No module named 'django'
 
-C:\Bakesale\backend>"C:\Bakesale\venv\Scripts\python.exe" manage.py migrate
-Operations to perform:
-  Apply all migrations: admin, api, auth, contenttypes, sessions
-Running migrations:
-  No migrations to apply.
-  Your models in app(s): 'api' have changes that are not yet reflected in a migration, and so won't be applied.
-  Run 'manage.py makemigrations' to make new migrations, and then re-run 'manage.py migrate' to apply them.
+Usage:
 
-C:\Bakesale\backend>
+    __main__.py [OPTS] MODULE:OBJECT
+
+Standard options:
+
+    --help
+        Show this information.
+
+    --call
+        Call the given object to get the WSGI application.
+
+    --host=ADDR
+        Hostname or IP address on which to listen, default is '0.0.0.0',
+        which means "all IP addresses on this host".
+
+        Note: May not be used together with --listen
+
+    --port=PORT
+        TCP port on which to listen, default is '8080'
+
+        Note: May not be used together with --listen
+
+    --listen=ip:port
+        Tell waitress to listen on an ip port combination.
+
+        Example:
+
+            --listen=127.0.0.1:8080
+            --listen=[::1]:8080
+            --listen=*:8080
+
+        This option may be used multiple times to listen on multiple sockets.
+        A wildcard for the hostname is also supported and will bind to both
+        IPv4/IPv6 depending on whether they are enabled or disabled.
+
+    --[no-]ipv4
+        Toggle on/off IPv4 support.
+
+        Example:
+
+            --no-ipv4
+
+        This will disable IPv4 socket support. This affects wildcard matching
+        when generating the list of sockets.
+
+    --[no-]ipv6
+        Toggle on/off IPv6 support.
+
+        Example:
+
+            --no-ipv6
+
+        This will turn on IPv6 socket support. This affects wildcard matching
+        when generating a list of sockets.
+
+    --unix-socket=PATH
+        Path of Unix socket. If a socket path is specified, a Unix domain
+        socket is made instead of the usual inet domain socket.
+
+        Not available on Windows.
+
+    --unix-socket-perms=PERMS
+        Octal permissions to use for the Unix domain socket, default is
+        '600'.
+
+    --url-scheme=STR
+        Default wsgi.url_scheme value, default is 'http'.
+
+    --url-prefix=STR
+        The ``SCRIPT_NAME`` WSGI environment value.  Setting this to anything
+        except the empty string will cause the WSGI ``SCRIPT_NAME`` value to be
+        the value passed minus any trailing slashes you add, and it will cause
+        the ``PATH_INFO`` of any request which is prefixed with this value to
+        be stripped of the prefix.  Default is the empty string.
+
+    --ident=STR
+        Server identity used in the 'Server' header in responses. Default
+        is 'waitress'.
+
+Tuning options:
+
+    --threads=INT
+        Number of threads used to process application logic, default is 4.
+
+    --backlog=INT
+        Connection backlog for the server. Default is 1024.
+
+    --recv-bytes=INT
+        Number of bytes to request when calling socket.recv(). Default is
+        8192.
+
+    --send-bytes=INT
+        Number of bytes to send to socket.send(). Default is 18000.
+        Multiples of 9000 should avoid partly-filled TCP packets.
+
+    --outbuf-overflow=INT
+        A temporary file should be created if the pending output is larger
+        than this. Default is 1048576 (1MB).
+
+    --outbuf-high-watermark=INT
+        The app_iter will pause when pending output is larger than this value
+        and will resume once enough data is written to the socket to fall below
+        this threshold. Default is 16777216 (16MB).
+
+    --inbuf-overflow=INT
+        A temporary file should be created if the pending input is larger
+        than this. Default is 524288 (512KB).
+
+    --connection-limit=INT
+        Stop creating new channels if too many are already active.
+        Default is 100.
+
+    --cleanup-interval=INT
+        Minimum seconds between cleaning up inactive channels. Default
+        is 30. See '--channel-timeout'.
+
+    --channel-timeout=INT
+        Maximum number of seconds to leave inactive connections open.
+        Default is 120. 'Inactive' is defined as 'has received no data
+        from the client and has sent no data to the client'.
+
+    --[no-]log-socket-errors
+        Toggle whether premature client disconnect tracebacks ought to be
+        logged. On by default.
+
+    --max-request-header-size=INT
+        Maximum size of all request headers combined. Default is 262144
+        (256KB).
+
+    --max-request-body-size=INT
+        Maximum size of request body. Default is 1073741824 (1GB).
+
+    --[no-]expose-tracebacks
+        Toggle whether to expose tracebacks of unhandled exceptions to the
+        client. Off by default.
+
+    --asyncore-loop-timeout=INT
+        The timeout value in seconds passed to asyncore.loop(). Default is 1.
+
+    --asyncore-use-poll
+        The use_poll argument passed to ``asyncore.loop()``. Helps overcome
+        open file descriptors limit. Default is False.
+
+    --channel-request-lookahead=INT
+        Allows channels to stay readable and buffer more requests up to the
+        given maximum even if a request is already being processed. This allows
+        detecting if a client closed the connection while its request is being
+        processed. Default is 0.
+
+
+There was an exception (ModuleNotFoundError) importing your module.
+
+It had these arguments: 
+1. No module named 'django'
+
+Error: No module named 'django'
+
+Usage:
+
+    __main__.py [OPTS] MODULE:OBJECT
+
+Standard options:
+
+    --help
+        Show this information.
+
+    --call
+        Call the given object to get the WSGI application.
+
+    --host=ADDR
+        Hostname or IP address on which to listen, default is '0.0.0.0',
+        which means "all IP addresses on this host".
+
+        Note: May not be used together with --listen
+
+    --port=PORT
+        TCP port on which to listen, default is '8080'
+
+        Note: May not be used together with --listen
+
+    --listen=ip:port
+        Tell waitress to listen on an ip port combination.
+
+        Example:
+
+            --listen=127.0.0.1:8080
+            --listen=[::1]:8080
+            --listen=*:8080
+
+        This option may be used multiple times to listen on multiple sockets.
+        A wildcard for the hostname is also supported and will bind to both
+        IPv4/IPv6 depending on whether they are enabled or disabled.
+
+    --[no-]ipv4
+        Toggle on/off IPv4 support.
+
+        Example:
+
+            --no-ipv4
+
+        This will disable IPv4 socket support. This affects wildcard matching
+        when generating the list of sockets.
+
+    --[no-]ipv6
+        Toggle on/off IPv6 support.
+
+        Example:
+
+            --no-ipv6
+
+        This will turn on IPv6 socket support. This affects wildcard matching
+        when generating a list of sockets.
+
+    --unix-socket=PATH
+        Path of Unix socket. If a socket path is specified, a Unix domain
+        socket is made instead of the usual inet domain socket.
+
+        Not available on Windows.
+
+    --unix-socket-perms=PERMS
+        Octal permissions to use for the Unix domain socket, default is
+        '600'.
+
+    --url-scheme=STR
+        Default wsgi.url_scheme value, default is 'http'.
+
+    --url-prefix=STR
+        The ``SCRIPT_NAME`` WSGI environment value.  Setting this to anything
+        except the empty string will cause the WSGI ``SCRIPT_NAME`` value to be
+        the value passed minus any trailing slashes you add, and it will cause
+        the ``PATH_INFO`` of any request which is prefixed with this value to
+        be stripped of the prefix.  Default is the empty string.
+
+    --ident=STR
+        Server identity used in the 'Server' header in responses. Default
+        is 'waitress'.
+
+Tuning options:
+
+    --threads=INT
+        Number of threads used to process application logic, default is 4.
+
+    --backlog=INT
+        Connection backlog for the server. Default is 1024.
+
+    --recv-bytes=INT
+        Number of bytes to request when calling socket.recv(). Default is
+        8192.
+
+    --send-bytes=INT
+        Number of bytes to send to socket.send(). Default is 18000.
+        Multiples of 9000 should avoid partly-filled TCP packets.
+
+    --outbuf-overflow=INT
+        A temporary file should be created if the pending output is larger
+        than this. Default is 1048576 (1MB).
+
+    --outbuf-high-watermark=INT
+        The app_iter will pause when pending output is larger than this value
+        and will resume once enough data is written to the socket to fall below
+        this threshold. Default is 16777216 (16MB).
+
+    --inbuf-overflow=INT
+        A temporary file should be created if the pending input is larger
+        than this. Default is 524288 (512KB).
+
+    --connection-limit=INT
+        Stop creating new channels if too many are already active.
+        Default is 100.
+
+    --cleanup-interval=INT
+        Minimum seconds between cleaning up inactive channels. Default
+        is 30. See '--channel-timeout'.
+
+    --channel-timeout=INT
+        Maximum number of seconds to leave inactive connections open.
+        Default is 120. 'Inactive' is defined as 'has received no data
+        from the client and has sent no data to the client'.
+
+    --[no-]log-socket-errors
+        Toggle whether premature client disconnect tracebacks ought to be
+        logged. On by default.
+
+    --max-request-header-size=INT
+        Maximum size of all request headers combined. Default is 262144
+        (256KB).
+
+    --max-request-body-size=INT
+        Maximum size of request body. Default is 1073741824 (1GB).
+
+    --[no-]expose-tracebacks
+        Toggle whether to expose tracebacks of unhandled exceptions to the
+        client. Off by default.
+
+    --asyncore-loop-timeout=INT
+        The timeout value in seconds passed to asyncore.loop(). Default is 1.
+
+    --asyncore-use-poll
+        The use_poll argument passed to ``asyncore.loop()``. Helps overcome
+        open file descriptors limit. Default is False.
+
+    --channel-request-lookahead=INT
+        Allows channels to stay readable and buffer more requests up to the
+        given maximum even if a request is already being processed. This allows
+        detecting if a client closed the connection while its request is being
+        processed. Default is 0.
+
+
+There was an exception (ModuleNotFoundError) importing your module.
+
+It had these arguments: 
+1. No module named 'django'
+
+Error: No module named 'django'
+
+Usage:
+
+    __main__.py [OPTS] MODULE:OBJECT
+
+Standard options:
+
+    --help
+        Show this information.
+
+    --call
+        Call the given object to get the WSGI application.
+
+    --host=ADDR
+        Hostname or IP address on which to listen, default is '0.0.0.0',
+        which means "all IP addresses on this host".
+
+        Note: May not be used together with --listen
+
+    --port=PORT
+        TCP port on which to listen, default is '8080'
+
+        Note: May not be used together with --listen
+
+    --listen=ip:port
+        Tell waitress to listen on an ip port combination.
+
+        Example:
+
+            --listen=127.0.0.1:8080
+            --listen=[::1]:8080
+            --listen=*:8080
+
+        This option may be used multiple times to listen on multiple sockets.
+        A wildcard for the hostname is also supported and will bind to both
+        IPv4/IPv6 depending on whether they are enabled or disabled.
+
+    --[no-]ipv4
+        Toggle on/off IPv4 support.
+
+        Example:
+
+            --no-ipv4
+
+        This will disable IPv4 socket support. This affects wildcard matching
+        when generating the list of sockets.
+
+    --[no-]ipv6
+        Toggle on/off IPv6 support.
+
+        Example:
+
+            --no-ipv6
+
+        This will turn on IPv6 socket support. This affects wildcard matching
+        when generating a list of sockets.
+
+    --unix-socket=PATH
+        Path of Unix socket. If a socket path is specified, a Unix domain
+        socket is made instead of the usual inet domain socket.
+
+        Not available on Windows.
+
+    --unix-socket-perms=PERMS
+        Octal permissions to use for the Unix domain socket, default is
+        '600'.
+
+    --url-scheme=STR
+        Default wsgi.url_scheme value, default is 'http'.
+
+    --url-prefix=STR
+        The ``SCRIPT_NAME`` WSGI environment value.  Setting this to anything
+        except the empty string will cause the WSGI ``SCRIPT_NAME`` value to be
+        the value passed minus any trailing slashes you add, and it will cause
+        the ``PATH_INFO`` of any request which is prefixed with this value to
+        be stripped of the prefix.  Default is the empty string.
+
+    --ident=STR
+        Server identity used in the 'Server' header in responses. Default
+        is 'waitress'.
+
+Tuning options:
+
+    --threads=INT
+        Number of threads used to process application logic, default is 4.
+
+    --backlog=INT
+        Connection backlog for the server. Default is 1024.
+
+    --recv-bytes=INT
+        Number of bytes to request when calling socket.recv(). Default is
+        8192.
+
+    --send-bytes=INT
+        Number of bytes to send to socket.send(). Default is 18000.
+        Multiples of 9000 should avoid partly-filled TCP packets.
+
+    --outbuf-overflow=INT
+        A temporary file should be created if the pending output is larger
+        than this. Default is 1048576 (1MB).
+
+    --outbuf-high-watermark=INT
+        The app_iter will pause when pending output is larger than this value
+        and will resume once enough data is written to the socket to fall below
+        this threshold. Default is 16777216 (16MB).
+
+    --inbuf-overflow=INT
+        A temporary file should be created if the pending input is larger
+        than this. Default is 524288 (512KB).
+
+    --connection-limit=INT
+        Stop creating new channels if too many are already active.
+        Default is 100.
+
+    --cleanup-interval=INT
+        Minimum seconds between cleaning up inactive channels. Default
+        is 30. See '--channel-timeout'.
+
+    --channel-timeout=INT
+        Maximum number of seconds to leave inactive connections open.
+        Default is 120. 'Inactive' is defined as 'has received no data
+        from the client and has sent no data to the client'.
+
+    --[no-]log-socket-errors
+        Toggle whether premature client disconnect tracebacks ought to be
+        logged. On by default.
+
+    --max-request-header-size=INT
+        Maximum size of all request headers combined. Default is 262144
+        (256KB).
+
+    --max-request-body-size=INT
+        Maximum size of request body. Default is 1073741824 (1GB).
+
+    --[no-]expose-tracebacks
+        Toggle whether to expose tracebacks of unhandled exceptions to the
+        client. Off by default.
+
+    --asyncore-loop-timeout=INT
+        The timeout value in seconds passed to asyncore.loop(). Default is 1.
+
+    --asyncore-use-poll
+        The use_poll argument passed to ``asyncore.loop()``. Helps overcome
+        open file descriptors limit. Default is False.
+
+    --channel-request-lookahead=INT
+        Allows channels to stay readable and buffer more requests up to the
+        given maximum even if a request is already being processed. This allows
+        detecting if a client closed the connection while its request is being
+        processed. Default is 0.
+
+
+There was an exception (ModuleNotFoundError) importing your module.
+
+It had these arguments: 
+1. No module named 'django'
+
+Error: No module named 'django'
+
+Usage:
+
+    __main__.py [OPTS] MODULE:OBJECT
+
+Standard options:
+
+    --help
+        Show this information.
+
+    --call
+        Call the given object to get the WSGI application.
+
+    --host=ADDR
+        Hostname or IP address on which to listen, default is '0.0.0.0',
+        which means "all IP addresses on this host".
+
+        Note: May not be used together with --listen
+
+    --port=PORT
+        TCP port on which to listen, default is '8080'
+
+        Note: May not be used together with --listen
+
+    --listen=ip:port
+        Tell waitress to listen on an ip port combination.
+
+        Example:
+
+            --listen=127.0.0.1:8080
+            --listen=[::1]:8080
+            --listen=*:8080
+
+        This option may be used multiple times to listen on multiple sockets.
+        A wildcard for the hostname is also supported and will bind to both
+        IPv4/IPv6 depending on whether they are enabled or disabled.
+
+    --[no-]ipv4
+        Toggle on/off IPv4 support.
+
+        Example:
+
+            --no-ipv4
+
+        This will disable IPv4 socket support. This affects wildcard matching
+        when generating the list of sockets.
+
+    --[no-]ipv6
+        Toggle on/off IPv6 support.
+
+        Example:
+
+            --no-ipv6
+
+        This will turn on IPv6 socket support. This affects wildcard matching
+        when generating a list of sockets.
+
+    --unix-socket=PATH
+        Path of Unix socket. If a socket path is specified, a Unix domain
+        socket is made instead of the usual inet domain socket.
+
+        Not available on Windows.
+
+    --unix-socket-perms=PERMS
+        Octal permissions to use for the Unix domain socket, default is
+        '600'.
+
+    --url-scheme=STR
+        Default wsgi.url_scheme value, default is 'http'.
+
+    --url-prefix=STR
+        The ``SCRIPT_NAME`` WSGI environment value.  Setting this to anything
+        except the empty string will cause the WSGI ``SCRIPT_NAME`` value to be
+        the value passed minus any trailing slashes you add, and it will cause
+        the ``PATH_INFO`` of any request which is prefixed with this value to
+        be stripped of the prefix.  Default is the empty string.
+
+    --ident=STR
+        Server identity used in the 'Server' header in responses. Default
+        is 'waitress'.
+
+Tuning options:
+
+    --threads=INT
+        Number of threads used to process application logic, default is 4.
+
+    --backlog=INT
+        Connection backlog for the server. Default is 1024.
+
+    --recv-bytes=INT
+        Number of bytes to request when calling socket.recv(). Default is
+        8192.
+
+    --send-bytes=INT
+        Number of bytes to send to socket.send(). Default is 18000.
+        Multiples of 9000 should avoid partly-filled TCP packets.
+
+    --outbuf-overflow=INT
+        A temporary file should be created if the pending output is larger
+        than this. Default is 1048576 (1MB).
+
+    --outbuf-high-watermark=INT
+        The app_iter will pause when pending output is larger than this value
+        and will resume once enough data is written to the socket to fall below
+        this threshold. Default is 16777216 (16MB).
+
+    --inbuf-overflow=INT
+        A temporary file should be created if the pending input is larger
+        than this. Default is 524288 (512KB).
+
+    --connection-limit=INT
+        Stop creating new channels if too many are already active.
+        Default is 100.
+
+    --cleanup-interval=INT
+        Minimum seconds between cleaning up inactive channels. Default
+        is 30. See '--channel-timeout'.
+
+    --channel-timeout=INT
+        Maximum number of seconds to leave inactive connections open.
+        Default is 120. 'Inactive' is defined as 'has received no data
+        from the client and has sent no data to the client'.
+
+    --[no-]log-socket-errors
+        Toggle whether premature client disconnect tracebacks ought to be
+        logged. On by default.
+
+    --max-request-header-size=INT
+        Maximum size of all request headers combined. Default is 262144
+        (256KB).
+
+    --max-request-body-size=INT
+        Maximum size of request body. Default is 1073741824 (1GB).
+
+    --[no-]expose-tracebacks
+        Toggle whether to expose tracebacks of unhandled exceptions to the
+        client. Off by default.
+
+    --asyncore-loop-timeout=INT
+        The timeout value in seconds passed to asyncore.loop(). Default is 1.
+
+    --asyncore-use-poll
+        The use_poll argument passed to ``asyncore.loop()``. Helps overcome
+        open file descriptors limit. Default is False.
+
+    --channel-request-lookahead=INT
+        Allows channels to stay readable and buffer more requests up to the
+        given maximum even if a request is already being processed. This allows
+        detecting if a client closed the connection while its request is being
+        processed. Default is 0.
+
+
+There was an exception (ModuleNotFoundError) importing your module.
+
+It had these arguments: 
+1. No module named 'django'
+
+Error: No module named 'django'
+
+Usage:
+
+    __main__.py [OPTS] MODULE:OBJECT
+
+Standard options:
+
+    --help
+        Show this information.
+
+    --call
+        Call the given object to get the WSGI application.
+
+    --host=ADDR
+        Hostname or IP address on which to listen, default is '0.0.0.0',
+        which means "all IP addresses on this host".
+
+        Note: May not be used together with --listen
+
+    --port=PORT
+        TCP port on which to listen, default is '8080'
+
+        Note: May not be used together with --listen
+
+    --listen=ip:port
+        Tell waitress to listen on an ip port combination.
+
+        Example:
+
+            --listen=127.0.0.1:8080
+            --listen=[::1]:8080
+            --listen=*:8080
+
+        This option may be used multiple times to listen on multiple sockets.
+        A wildcard for the hostname is also supported and will bind to both
+        IPv4/IPv6 depending on whether they are enabled or disabled.
+
+    --[no-]ipv4
+        Toggle on/off IPv4 support.
+
+        Example:
+
+            --no-ipv4
+
+        This will disable IPv4 socket support. This affects wildcard matching
+        when generating the list of sockets.
+
+    --[no-]ipv6
+        Toggle on/off IPv6 support.
+
+        Example:
+
+            --no-ipv6
+
+        This will turn on IPv6 socket support. This affects wildcard matching
+        when generating a list of sockets.
+
+    --unix-socket=PATH
+        Path of Unix socket. If a socket path is specified, a Unix domain
+        socket is made instead of the usual inet domain socket.
+
+        Not available on Windows.
+
+    --unix-socket-perms=PERMS
+        Octal permissions to use for the Unix domain socket, default is
+        '600'.
+
+    --url-scheme=STR
+        Default wsgi.url_scheme value, default is 'http'.
+
+    --url-prefix=STR
+        The ``SCRIPT_NAME`` WSGI environment value.  Setting this to anything
+        except the empty string will cause the WSGI ``SCRIPT_NAME`` value to be
+        the value passed minus any trailing slashes you add, and it will cause
+        the ``PATH_INFO`` of any request which is prefixed with this value to
+        be stripped of the prefix.  Default is the empty string.
+
+    --ident=STR
+        Server identity used in the 'Server' header in responses. Default
+        is 'waitress'.
+
+Tuning options:
+
+    --threads=INT
+        Number of threads used to process application logic, default is 4.
+
+    --backlog=INT
+        Connection backlog for the server. Default is 1024.
+
+    --recv-bytes=INT
+        Number of bytes to request when calling socket.recv(). Default is
+        8192.
+
+    --send-bytes=INT
+        Number of bytes to send to socket.send(). Default is 18000.
+        Multiples of 9000 should avoid partly-filled TCP packets.
+
+    --outbuf-overflow=INT
+        A temporary file should be created if the pending output is larger
+        than this. Default is 1048576 (1MB).
+
+    --outbuf-high-watermark=INT
+        The app_iter will pause when pending output is larger than this value
+        and will resume once enough data is written to the socket to fall below
+        this threshold. Default is 16777216 (16MB).
+
+    --inbuf-overflow=INT
+        A temporary file should be created if the pending input is larger
+        than this. Default is 524288 (512KB).
+
+    --connection-limit=INT
+        Stop creating new channels if too many are already active.
+        Default is 100.
+
+    --cleanup-interval=INT
+        Minimum seconds between cleaning up inactive channels. Default
+        is 30. See '--channel-timeout'.
+
+    --channel-timeout=INT
+        Maximum number of seconds to leave inactive connections open.
+        Default is 120. 'Inactive' is defined as 'has received no data
+        from the client and has sent no data to the client'.
+
+    --[no-]log-socket-errors
+        Toggle whether premature client disconnect tracebacks ought to be
+        logged. On by default.
+
+    --max-request-header-size=INT
+        Maximum size of all request headers combined. Default is 262144
+        (256KB).
+
+    --max-request-body-size=INT
+        Maximum size of request body. Default is 1073741824 (1GB).
+
+    --[no-]expose-tracebacks
+        Toggle whether to expose tracebacks of unhandled exceptions to the
+        client. Off by default.
+
+    --asyncore-loop-timeout=INT
+        The timeout value in seconds passed to asyncore.loop(). Default is 1.
+
+    --asyncore-use-poll
+        The use_poll argument passed to ``asyncore.loop()``. Helps overcome
+        open file descriptors limit. Default is False.
+
+    --channel-request-lookahead=INT
+        Allows channels to stay readable and buffer more requests up to the
+        given maximum even if a request is already being processed. This allows
+        detecting if a client closed the connection while its request is being
+        processed. Default is 0.
+
+
+There was an exception (ModuleNotFoundError) importing your module.
+
+It had these arguments: 
+1. No module named 'django'
+
+Error: No module named 'django'
+
+Usage:
+
+    __main__.py [OPTS] MODULE:OBJECT
+
+Standard options:
+
+    --help
+        Show this information.
+
+    --call
+        Call the given object to get the WSGI application.
+
+    --host=ADDR
+        Hostname or IP address on which to listen, default is '0.0.0.0',
+        which means "all IP addresses on this host".
+
+        Note: May not be used together with --listen
+
+    --port=PORT
+        TCP port on which to listen, default is '8080'
+
+        Note: May not be used together with --listen
+
+    --listen=ip:port
+        Tell waitress to listen on an ip port combination.
+
+        Example:
+
+            --listen=127.0.0.1:8080
+            --listen=[::1]:8080
+            --listen=*:8080
+
+        This option may be used multiple times to listen on multiple sockets.
+        A wildcard for the hostname is also supported and will bind to both
+        IPv4/IPv6 depending on whether they are enabled or disabled.
+
+    --[no-]ipv4
+        Toggle on/off IPv4 support.
+
+        Example:
+
+            --no-ipv4
+
+        This will disable IPv4 socket support. This affects wildcard matching
+        when generating the list of sockets.
+
+    --[no-]ipv6
+        Toggle on/off IPv6 support.
+
+        Example:
+
+            --no-ipv6
+
+        This will turn on IPv6 socket support. This affects wildcard matching
+        when generating a list of sockets.
+
+    --unix-socket=PATH
+        Path of Unix socket. If a socket path is specified, a Unix domain
+        socket is made instead of the usual inet domain socket.
+
+        Not available on Windows.
+
+    --unix-socket-perms=PERMS
+        Octal permissions to use for the Unix domain socket, default is
+        '600'.
+
+    --url-scheme=STR
+        Default wsgi.url_scheme value, default is 'http'.
+
+    --url-prefix=STR
+        The ``SCRIPT_NAME`` WSGI environment value.  Setting this to anything
+        except the empty string will cause the WSGI ``SCRIPT_NAME`` value to be
+        the value passed minus any trailing slashes you add, and it will cause
+        the ``PATH_INFO`` of any request which is prefixed with this value to
+        be stripped of the prefix.  Default is the empty string.
+
+    --ident=STR
+        Server identity used in the 'Server' header in responses. Default
+        is 'waitress'.
+
+Tuning options:
+
+    --threads=INT
+        Number of threads used to process application logic, default is 4.
+
+    --backlog=INT
+        Connection backlog for the server. Default is 1024.
+
+    --recv-bytes=INT
+        Number of bytes to request when calling socket.recv(). Default is
+        8192.
+
+    --send-bytes=INT
+        Number of bytes to send to socket.send(). Default is 18000.
+        Multiples of 9000 should avoid partly-filled TCP packets.
+
+    --outbuf-overflow=INT
+        A temporary file should be created if the pending output is larger
+        than this. Default is 1048576 (1MB).
+
+    --outbuf-high-watermark=INT
+        The app_iter will pause when pending output is larger than this value
+        and will resume once enough data is written to the socket to fall below
+        this threshold. Default is 16777216 (16MB).
+
+    --inbuf-overflow=INT
+        A temporary file should be created if the pending input is larger
+        than this. Default is 524288 (512KB).
+
+    --connection-limit=INT
+        Stop creating new channels if too many are already active.
+        Default is 100.
+
+    --cleanup-interval=INT
+        Minimum seconds between cleaning up inactive channels. Default
+        is 30. See '--channel-timeout'.
+
+    --channel-timeout=INT
+        Maximum number of seconds to leave inactive connections open.
+        Default is 120. 'Inactive' is defined as 'has received no data
+        from the client and has sent no data to the client'.
+
+    --[no-]log-socket-errors
+        Toggle whether premature client disconnect tracebacks ought to be
+        logged. On by default.
+
+    --max-request-header-size=INT
+        Maximum size of all request headers combined. Default is 262144
+        (256KB).
+
+    --max-request-body-size=INT
+        Maximum size of request body. Default is 1073741824 (1GB).
+
+    --[no-]expose-tracebacks
+        Toggle whether to expose tracebacks of unhandled exceptions to the
+        client. Off by default.
+
+    --asyncore-loop-timeout=INT
+        The timeout value in seconds passed to asyncore.loop(). Default is 1.
+
+    --asyncore-use-poll
+        The use_poll argument passed to ``asyncore.loop()``. Helps overcome
+        open file descriptors limit. Default is False.
+
+    --channel-request-lookahead=INT
+        Allows channels to stay readable and buffer more requests up to the
+        given maximum even if a request is already being processed. This allows
+        detecting if a client closed the connection while its request is being
+        processed. Default is 0.
+
+
+There was an exception (ModuleNotFoundError) importing your module.
+
+It had these arguments: 
+1. No module named 'django'
+
+Error: No module named 'django'
+
+Usage:
+
+    __main__.py [OPTS] MODULE:OBJECT
+
+Standard options:
+
+    --help
+        Show this information.
+
+    --call
+        Call the given object to get the WSGI application.
+
+    --host=ADDR
+        Hostname or IP address on which to listen, default is '0.0.0.0',
+        which means "all IP addresses on this host".
+
+        Note: May not be used together with --listen
+
+    --port=PORT
+        TCP port on which to listen, default is '8080'
+
+        Note: May not be used together with --listen
+
+    --listen=ip:port
+        Tell waitress to listen on an ip port combination.
+
+        Example:
+
+            --listen=127.0.0.1:8080
+            --listen=[::1]:8080
+            --listen=*:8080
+
+        This option may be used multiple times to listen on multiple sockets.
+        A wildcard for the hostname is also supported and will bind to both
+        IPv4/IPv6 depending on whether they are enabled or disabled.
+
+    --[no-]ipv4
+        Toggle on/off IPv4 support.
+
+        Example:
+
+            --no-ipv4
+
+        This will disable IPv4 socket support. This affects wildcard matching
+        when generating the list of sockets.
+
+    --[no-]ipv6
+        Toggle on/off IPv6 support.
+
+        Example:
+
+            --no-ipv6
+
+        This will turn on IPv6 socket support. This affects wildcard matching
+        when generating a list of sockets.
+
+    --unix-socket=PATH
+        Path of Unix socket. If a socket path is specified, a Unix domain
+        socket is made instead of the usual inet domain socket.
+
+        Not available on Windows.
+
+    --unix-socket-perms=PERMS
+        Octal permissions to use for the Unix domain socket, default is
+        '600'.
+
+    --url-scheme=STR
+        Default wsgi.url_scheme value, default is 'http'.
+
+    --url-prefix=STR
+        The ``SCRIPT_NAME`` WSGI environment value.  Setting this to anything
+        except the empty string will cause the WSGI ``SCRIPT_NAME`` value to be
+        the value passed minus any trailing slashes you add, and it will cause
+        the ``PATH_INFO`` of any request which is prefixed with this value to
+        be stripped of the prefix.  Default is the empty string.
+
+    --ident=STR
+        Server identity used in the 'Server' header in responses. Default
+        is 'waitress'.
+
+Tuning options:
+
+    --threads=INT
+        Number of threads used to process application logic, default is 4.
+
+    --backlog=INT
+        Connection backlog for the server. Default is 1024.
+
+    --recv-bytes=INT
+        Number of bytes to request when calling socket.recv(). Default is
+        8192.
+
+    --send-bytes=INT
+        Number of bytes to send to socket.send(). Default is 18000.
+        Multiples of 9000 should avoid partly-filled TCP packets.
+
+    --outbuf-overflow=INT
+        A temporary file should be created if the pending output is larger
+        than this. Default is 1048576 (1MB).
+
+    --outbuf-high-watermark=INT
+        The app_iter will pause when pending output is larger than this value
+        and will resume once enough data is written to the socket to fall below
+        this threshold. Default is 16777216 (16MB).
+
+    --inbuf-overflow=INT
+        A temporary file should be created if the pending input is larger
+        than this. Default is 524288 (512KB).
+
+    --connection-limit=INT
+        Stop creating new channels if too many are already active.
+        Default is 100.
+
+    --cleanup-interval=INT
+        Minimum seconds between cleaning up inactive channels. Default
+        is 30. See '--channel-timeout'.
+
+    --channel-timeout=INT
+        Maximum number of seconds to leave inactive connections open.
+        Default is 120. 'Inactive' is defined as 'has received no data
+        from the client and has sent no data to the client'.
+
+    --[no-]log-socket-errors
+        Toggle whether premature client disconnect tracebacks ought to be
+        logged. On by default.
+
+    --max-request-header-size=INT
+        Maximum size of all request headers combined. Default is 262144
+        (256KB).
+
+    --max-request-body-size=INT
+        Maximum size of request body. Default is 1073741824 (1GB).
+
+    --[no-]expose-tracebacks
+        Toggle whether to expose tracebacks of unhandled exceptions to the
+        client. Off by default.
+
+    --asyncore-loop-timeout=INT
+        The timeout value in seconds passed to asyncore.loop(). Default is 1.
+
+    --asyncore-use-poll
+        The use_poll argument passed to ``asyncore.loop()``. Helps overcome
+        open file descriptors limit. Default is False.
+
+    --channel-request-lookahead=INT
+        Allows channels to stay readable and buffer more requests up to the
+        given maximum even if a request is already being processed. This allows
+        detecting if a client closed the connection while its request is being
+        processed. Default is 0.
+
+
+There was an exception (ModuleNotFoundError) importing your module.
+
+It had these arguments: 
+1. No module named 'django'
+
+Serving on http://0.0.0.0:8000
+Serving on http://0.0.0.0:8000
+Internal Server Error: /api/token/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\views.py", line 46, in post
+    serializer.is_valid(raise_exception=True)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\serializers.py", line 225, in is_valid
+    self._validated_data = self.run_validation(self.initial_data)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\serializers.py", line 459, in run_validation
+    value = self.validate(value)
+            ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\serializers.py", line 23, in validate
+    data = super().validate(attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\serializers.py", line 73, in validate
+    data = super().validate(attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\serializers.py", line 54, in validate
+    self.user = authenticate(**authenticate_kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\debug.py", line 75, in sensitive_variables_wrapper
+    return func(*func_args, **func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\__init__.py", line 114, in authenticate
+    user = backend.authenticate(request, **credentials)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\backends.py", line 65, in authenticate
+    user = UserModel._default_manager.get_by_natural_key(username)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\base_user.py", line 37, in get_by_natural_key
+    return self.get(**{self.model.USERNAME_FIELD: username})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 631, in get
+    num = len(clone)
+          ^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 368, in __len__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1621, in execute_sql
+    cursor = self.connection.cursor()
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 320, in cursor
+    return self._cursor()
+           ^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 296, in _cursor
+    self.ensure_connection()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 278, in ensure_connection
+    with self.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+Internal Server Error: /api/token/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\views.py", line 46, in post
+    serializer.is_valid(raise_exception=True)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\serializers.py", line 225, in is_valid
+    self._validated_data = self.run_validation(self.initial_data)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\serializers.py", line 459, in run_validation
+    value = self.validate(value)
+            ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\serializers.py", line 23, in validate
+    data = super().validate(attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\serializers.py", line 73, in validate
+    data = super().validate(attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\serializers.py", line 54, in validate
+    self.user = authenticate(**authenticate_kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\debug.py", line 75, in sensitive_variables_wrapper
+    return func(*func_args, **func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\__init__.py", line 114, in authenticate
+    user = backend.authenticate(request, **credentials)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\backends.py", line 65, in authenticate
+    user = UserModel._default_manager.get_by_natural_key(username)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\base_user.py", line 37, in get_by_natural_key
+    return self.get(**{self.model.USERNAME_FIELD: username})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 631, in get
+    num = len(clone)
+          ^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 368, in __len__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1621, in execute_sql
+    cursor = self.connection.cursor()
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 320, in cursor
+    return self._cursor()
+           ^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 296, in _cursor
+    self.ensure_connection()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 278, in ensure_connection
+    with self.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+Internal Server Error: /api/token/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\views.py", line 46, in post
+    serializer.is_valid(raise_exception=True)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\serializers.py", line 225, in is_valid
+    self._validated_data = self.run_validation(self.initial_data)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\serializers.py", line 459, in run_validation
+    value = self.validate(value)
+            ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\serializers.py", line 23, in validate
+    data = super().validate(attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\serializers.py", line 73, in validate
+    data = super().validate(attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\serializers.py", line 54, in validate
+    self.user = authenticate(**authenticate_kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\debug.py", line 75, in sensitive_variables_wrapper
+    return func(*func_args, **func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\__init__.py", line 114, in authenticate
+    user = backend.authenticate(request, **credentials)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\backends.py", line 65, in authenticate
+    user = UserModel._default_manager.get_by_natural_key(username)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\base_user.py", line 37, in get_by_natural_key
+    return self.get(**{self.model.USERNAME_FIELD: username})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 631, in get
+    num = len(clone)
+          ^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 368, in __len__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1621, in execute_sql
+    cursor = self.connection.cursor()
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 320, in cursor
+    return self._cursor()
+           ^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 296, in _cursor
+    self.ensure_connection()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 278, in ensure_connection
+    with self.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+Internal Server Error: /api/token/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\views.py", line 46, in post
+    serializer.is_valid(raise_exception=True)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\serializers.py", line 225, in is_valid
+    self._validated_data = self.run_validation(self.initial_data)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\serializers.py", line 459, in run_validation
+    value = self.validate(value)
+            ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\serializers.py", line 23, in validate
+    data = super().validate(attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\serializers.py", line 73, in validate
+    data = super().validate(attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\serializers.py", line 54, in validate
+    self.user = authenticate(**authenticate_kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\debug.py", line 75, in sensitive_variables_wrapper
+    return func(*func_args, **func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\__init__.py", line 114, in authenticate
+    user = backend.authenticate(request, **credentials)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\backends.py", line 65, in authenticate
+    user = UserModel._default_manager.get_by_natural_key(username)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\base_user.py", line 37, in get_by_natural_key
+    return self.get(**{self.model.USERNAME_FIELD: username})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 631, in get
+    num = len(clone)
+          ^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 368, in __len__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1621, in execute_sql
+    cursor = self.connection.cursor()
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 320, in cursor
+    return self._cursor()
+           ^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 296, in _cursor
+    self.ensure_connection()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 278, in ensure_connection
+    with self.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+Internal Server Error: /api/token/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\views.py", line 46, in post
+    serializer.is_valid(raise_exception=True)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\serializers.py", line 225, in is_valid
+    self._validated_data = self.run_validation(self.initial_data)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\serializers.py", line 459, in run_validation
+    value = self.validate(value)
+            ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\serializers.py", line 23, in validate
+    data = super().validate(attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\serializers.py", line 73, in validate
+    data = super().validate(attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\serializers.py", line 54, in validate
+    self.user = authenticate(**authenticate_kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\debug.py", line 75, in sensitive_variables_wrapper
+    return func(*func_args, **func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\__init__.py", line 114, in authenticate
+    user = backend.authenticate(request, **credentials)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\backends.py", line 65, in authenticate
+    user = UserModel._default_manager.get_by_natural_key(username)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\base_user.py", line 37, in get_by_natural_key
+    return self.get(**{self.model.USERNAME_FIELD: username})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 631, in get
+    num = len(clone)
+          ^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 368, in __len__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1621, in execute_sql
+    cursor = self.connection.cursor()
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 320, in cursor
+    return self._cursor()
+           ^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 296, in _cursor
+    self.ensure_connection()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 278, in ensure_connection
+    with self.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+Internal Server Error: /api/token/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\views.py", line 46, in post
+    serializer.is_valid(raise_exception=True)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\serializers.py", line 225, in is_valid
+    self._validated_data = self.run_validation(self.initial_data)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\serializers.py", line 459, in run_validation
+    value = self.validate(value)
+            ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\serializers.py", line 23, in validate
+    data = super().validate(attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\serializers.py", line 73, in validate
+    data = super().validate(attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\serializers.py", line 54, in validate
+    self.user = authenticate(**authenticate_kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\debug.py", line 75, in sensitive_variables_wrapper
+    return func(*func_args, **func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\__init__.py", line 114, in authenticate
+    user = backend.authenticate(request, **credentials)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\backends.py", line 65, in authenticate
+    user = UserModel._default_manager.get_by_natural_key(username)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\base_user.py", line 37, in get_by_natural_key
+    return self.get(**{self.model.USERNAME_FIELD: username})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 631, in get
+    num = len(clone)
+          ^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 368, in __len__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1621, in execute_sql
+    cursor = self.connection.cursor()
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 320, in cursor
+    return self._cursor()
+           ^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 296, in _cursor
+    self.ensure_connection()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 278, in ensure_connection
+    with self.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+Internal Server Error: /api/token/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\views.py", line 46, in post
+    serializer.is_valid(raise_exception=True)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\serializers.py", line 225, in is_valid
+    self._validated_data = self.run_validation(self.initial_data)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\serializers.py", line 459, in run_validation
+    value = self.validate(value)
+            ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\serializers.py", line 23, in validate
+    data = super().validate(attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\serializers.py", line 73, in validate
+    data = super().validate(attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework_simplejwt\serializers.py", line 54, in validate
+    self.user = authenticate(**authenticate_kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\debug.py", line 75, in sensitive_variables_wrapper
+    return func(*func_args, **func_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\__init__.py", line 114, in authenticate
+    user = backend.authenticate(request, **credentials)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\backends.py", line 65, in authenticate
+    user = UserModel._default_manager.get_by_natural_key(username)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\contrib\auth\base_user.py", line 37, in get_by_natural_key
+    return self.get(**{self.model.USERNAME_FIELD: username})
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 631, in get
+    num = len(clone)
+          ^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 368, in __len__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1621, in execute_sql
+    cursor = self.connection.cursor()
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 320, in cursor
+    return self._cursor()
+           ^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 296, in _cursor
+    self.ensure_connection()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 278, in ensure_connection
+    with self.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 279, in ensure_connection
+    self.connect()
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\postgresql\base.py", line 332, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\psycopg2\__init__.py", line 135, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+
+Serving on http://0.0.0.0:8000
+Unauthorized: /api/token/
+Serving on http://0.0.0.0:8000
+Bad Request: /api/token/
+Unauthorized: /api/token/
+Serving on http://0.0.0.0:8000
+Serving on http://0.0.0.0:8000
+Unauthorized: /api/token/
+Internal Server Error: /api/profit-loss/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\views.py", line 2094, in get
+    sale_items = list(
+                 ^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 386, in __iter__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+Internal Server Error: /api/profit-loss/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\views.py", line 2094, in get
+    sale_items = list(
+                 ^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 386, in __iter__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+Internal Server Error: /api/profit-loss/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\views.py", line 2094, in get
+    sale_items = list(
+                 ^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 386, in __iter__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+Internal Server Error: /api/profit-loss/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\views.py", line 2094, in get
+    sale_items = list(
+                 ^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 386, in __iter__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+Internal Server Error: /api/profit-loss/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\views.py", line 2094, in get
+    sale_items = list(
+                 ^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 386, in __iter__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+Internal Server Error: /api/profit-loss/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\views.py", line 2094, in get
+    sale_items = list(
+                 ^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 386, in __iter__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+Internal Server Error: /api/profit-loss/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\views.py", line 2094, in get
+    sale_items = list(
+                 ^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 386, in __iter__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+Internal Server Error: /api/profit-loss/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\views.py", line 2094, in get
+    sale_items = list(
+                 ^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 386, in __iter__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+Internal Server Error: /api/profit-loss/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\views.py", line 2094, in get
+    sale_items = list(
+                 ^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 386, in __iter__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+Internal Server Error: /api/profit-loss/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\views.py", line 2094, in get
+    sale_items = list(
+                 ^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 386, in __iter__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+Internal Server Error: /api/profit-loss/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\views.py", line 2094, in get
+    sale_items = list(
+                 ^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 386, in __iter__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+Internal Server Error: /api/profit-loss/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\views.py", line 2094, in get
+    sale_items = list(
+                 ^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 386, in __iter__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+Internal Server Error: /api/profit-loss/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\views.py", line 2094, in get
+    sale_items = list(
+                 ^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 386, in __iter__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+Internal Server Error: /api/profit-loss/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\views.py", line 2094, in get
+    sale_items = list(
+                 ^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 386, in __iter__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+Internal Server Error: /api/profit-loss/
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.UndefinedColumn: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\core\handlers\base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\views\generic\base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 475, in handle_exception
+    self.raise_uncaught_exception(exc)
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 486, in raise_uncaught_exception
+    raise exc
+  File "C:\Bakesale\venv\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\backend\api\views.py", line 2094, in get
+    sale_items = list(
+                 ^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 386, in __iter__
+    self._fetch_all()
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Bakesale\venv\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.ProgrammingError: column api_stockbatch.purchase_price does not exist
+LINE 1: ...stockbatch"."product_id", "api_stockbatch"."mrp", "api_stock...
+                                                             ^
+
