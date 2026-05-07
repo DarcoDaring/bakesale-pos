@@ -1,4 +1,3 @@
-
 ================================
   Bakesale Backend Updater
 ================================
@@ -14,13 +13,8 @@ Recently modified files:
 ----------------------------------------
 
 [1/4] Creating new migrations (makemigrations)...
-Migrations for 'api':
-  api\migrations\0019_stockadjustmentrequest_batch_and_more.py
-    + Add field batch to stockadjustmentrequest
-    + Add field purchase_price to stockbatch
-    + Add field can_view_pl_report to userpermission
+No changes detected
   Check your models.py for errors.
 ================================
 
 Press any key to continue . . .
-
