@@ -55,11 +55,11 @@ export default function PrintBill({ bill, onClose }) {
       <div style="border-top:1px dashed #999;margin:6px 0"></div>` : '';
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-@page { size: 80mm auto; margin: 2mm 3mm; }
-html, body { margin: 0; padding: 0; width: 74mm;
+@page { size: 80mm auto; margin: 0; }
+html, body { margin: 0; padding: 2mm 3mm; width: 74mm; box-sizing: border-box;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 13px; color: #000; background: #fff;
-  line-height: 1.6; -webkit-print-color-adjust: exact; }
+  font-size: 13px; font-weight: 700; color: #000; background: #fff;
+  line-height: 1.6; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 </style></head><body>
   <div style="text-align:center;margin-bottom:10px">
     <div style="font-size:22px;font-weight:900;letter-spacing:2px">ALTHAHANI</div>

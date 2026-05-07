@@ -31,6 +31,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── Printer config persistence ───────────────────────────────────────────────
   saveDefaultPrinter: (name) => ipcRenderer.invoke('save-default-printer', name),
   loadDefaultPrinter: () => ipcRenderer.invoke('load-default-printer'),
+  saveBarcodePrinter: (name) => ipcRenderer.invoke('save-barcode-printer', name),
+  loadBarcodePrinter: () => ipcRenderer.invoke('load-barcode-printer'),
 
   // ── Server config ────────────────────────────────────────────────────────────
   /** Save server/client mode config */

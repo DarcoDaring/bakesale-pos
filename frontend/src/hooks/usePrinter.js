@@ -50,7 +50,7 @@ export function usePrinter() {
     }
   }, [isElectron]);
 
-  // ── Barcode Printing: Always show dialog ──────────────────────────────────
+  // ── Barcode Printing: Silent to saved barcode printer ────────────────────
   const printBarcode = useCallback(async (html) => {
     if (!isElectron) {
       const w = window.open('', '_blank');
@@ -62,11 +62,16 @@ export function usePrinter() {
     }
 
     try {
-      const result = await window.electronAPI.printWithDialog(html, {
+      const printerName = await window.electronAPI.loadBarcodePrinter();
+      if (!printerName) {
+        toast.error('No barcode printer set. Please configure it in the barcode print page.');
+        return;
+      }
+      await window.electronAPI.silentPrint(html, printerName, {
         pageSize: 'A4',
         printBackground: true,
       });
-      if (result.success) toast.success('Barcode printed!');
+      toast.success('Barcode printed!');
     } catch (e) {
       toast.error('Barcode print failed: ' + e.message);
     }

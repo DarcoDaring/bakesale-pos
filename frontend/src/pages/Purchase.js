@@ -385,7 +385,7 @@ window.onload = function() {
       const sel = document.getElementById('printerSelect');
       if (!api) { sel.innerHTML = '<option value="">— No printer API —</option>'; return; }
       try {
-        const [printers, savedName] = await Promise.all([api.getPrinters(), api.loadDefaultPrinter()]);
+        const [printers, savedName] = await Promise.all([api.getPrinters(), api.loadBarcodePrinter ? api.loadBarcodePrinter() : api.loadDefaultPrinter()]);
         sel.innerHTML = '';
         if (!printers.length) { sel.innerHTML = '<option value="">— No printers found —</option>'; return; }
         printers.forEach(pr => {
@@ -410,7 +410,7 @@ window.onload = function() {
       const sel = document.getElementById('printerSelect');
       if (!api || !sel.value) return;
       try {
-        await api.saveDefaultPrinter(sel.value);
+        await (api.saveBarcodePrinter ? api.saveBarcodePrinter(sel.value) : api.saveDefaultPrinter(sel.value));
         sel.classList.add('saved');
         document.getElementById('printerBadge').style.display = 'block';
       } catch(e) {}

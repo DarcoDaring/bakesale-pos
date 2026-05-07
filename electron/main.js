@@ -222,13 +222,30 @@ ipcMain.handle('open-external', (event, url) => shell.openExternal(url));
 
 ipcMain.handle('save-default-printer', (event, printerName) => {
   const configPath = path.join(app.getPath('userData'), 'printer-config.json');
-  fs.writeFileSync(configPath, JSON.stringify({ defaultPrinter: printerName }));
+  let config = {};
+  try { config = JSON.parse(fs.readFileSync(configPath, 'utf8')); } catch {}
+  config.defaultPrinter = printerName;
+  fs.writeFileSync(configPath, JSON.stringify(config));
   return true;
 });
 
 ipcMain.handle('load-default-printer', () => {
   const configPath = path.join(app.getPath('userData'), 'printer-config.json');
   try { return JSON.parse(fs.readFileSync(configPath, 'utf8')).defaultPrinter; } catch { return null; }
+});
+
+ipcMain.handle('save-barcode-printer', (event, printerName) => {
+  const configPath = path.join(app.getPath('userData'), 'printer-config.json');
+  let config = {};
+  try { config = JSON.parse(fs.readFileSync(configPath, 'utf8')); } catch {}
+  config.barcodePrinter = printerName;
+  fs.writeFileSync(configPath, JSON.stringify(config));
+  return true;
+});
+
+ipcMain.handle('load-barcode-printer', () => {
+  const configPath = path.join(app.getPath('userData'), 'printer-config.json');
+  try { return JSON.parse(fs.readFileSync(configPath, 'utf8')).barcodePrinter; } catch { return null; }
 });
 
 ipcMain.handle('save-server-config', (event, config) => {
