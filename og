@@ -1,2 +1,2 @@
-(venv) C:\Bakesale>python manage.py makemigrations
-C:\Users\user\AppData\Local\Programs\Python\Python311\python.exe: can't open file 'C:\\Bakesale\\manage.py': [Errno 2] No such file or directory
+cd /d "C:\Bakesale\backend"
+"C:\Bakesale\venv\Scripts\python.exe" manage.py migrate
