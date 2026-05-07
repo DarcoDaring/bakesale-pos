@@ -6,14 +6,6 @@ const payLabel = {
   cash_card: 'Cash & Card', cash_upi: 'Cash & UPI',
 };
 
-// Pad label left, value right, total `w` chars
-function lr(label, value, w = 32) {
-  const l = String(label);
-  const v = String(value);
-  const gap = w - l.length - v.length;
-  return l + (gap > 0 ? ' '.repeat(gap) : ' ') + v;
-}
-const divider = (c = '-', w = 32) => c.repeat(w);
 
 export default function PrintBill({ bill, onClose }) {
   const { printBill } = usePrinter();
@@ -30,89 +22,78 @@ export default function PrintBill({ bill, onClose }) {
       if (r > 0) totalTax += s - s / (1 + r / 100);
     });
 
-    const W = 32;
-    const lines = [];
+    const fmtRs = n => `Rs.${parseFloat(n || 0).toFixed(2)}`;
 
-    const centre = (s, w = W) => {
-      const pad = Math.max(0, Math.floor((w - s.length) / 2));
-      return ' '.repeat(pad) + s;
-    };
+    const infoRows = [
+      ['Bill No',  bill.bill_number,  true],
+      ['Date',     new Date(bill.created_at).toLocaleDateString('en-IN'),  false],
+      ['Time',     new Date(bill.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),  false],
+      ['Payment',  payLabel[bill.payment_type] || bill.payment_type,  false],
+      ...(bill.created_by_username ? [['Cashier', bill.created_by_username, false]] : []),
+    ];
 
-    // ── Header ── (must match screen preview exactly)
-    lines.push(centre('ALTHAHANI'));
-    lines.push(centre('GST IN: 27AAACB7450P1ZV'));
-    lines.push(centre('FSSAI: 10012022000234'));
-    lines.push(centre('MOB: 8921201010'));
-    lines.push(divider('-', W));
-
-    // Bill info
-    lines.push(lr('Bill No', bill.bill_number, W));
-    lines.push(lr('Date', new Date(bill.created_at).toLocaleDateString('en-IN'), W));
-    lines.push(lr('Time', new Date(bill.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }), W));
-    lines.push(lr('Payment', payLabel[bill.payment_type] || bill.payment_type, W));
-    if (bill.created_by_username) lines.push(lr('Cashier', bill.created_by_username, W));
-    lines.push(divider('-', W));
-
-    // Items header
-    lines.push('Item            ' + '   Qty' + '    Amount');
-    lines.push(divider('-', W));
-
-    items.forEach(item => {
+    const itemsHtml = items.map(item => {
       const qty      = parseFloat(item.quantity || 0);
       const price    = parseFloat(item.price    || 0);
       const subtotal = qty * price;
-      const qtyStr = (qty % 1 === 0 ? String(qty) : qty.toFixed(3)).padStart(6);
-      const amtStr = ('Rs.' + subtotal.toFixed(2)).padStart(10);
-      const name   = item.product_name || '';
-      const firstChunk = name.substring(0, 16);
-      lines.push(firstChunk.padEnd(16) + qtyStr + amtStr);
-      let rest = name.substring(16);
-      while (rest.length > 0) {
-        lines.push(rest.substring(0, 16));
-        rest = rest.substring(16);
-      }
-    });
+      return `<div style="display:grid;grid-template-columns:1fr 44px 80px;gap:6px;font-size:12px;margin-bottom:5px;align-items:start">
+        <span style="font-weight:600;word-break:break-word;line-height:1.3">${item.product_name || ''}</span>
+        <span style="text-align:center;color:#444">${qty % 1 === 0 ? qty : qty.toFixed(3)}</span>
+        <span style="text-align:right;font-weight:600">${fmtRs(subtotal)}</span>
+      </div>`;
+    }).join('');
 
-    lines.push(divider('-', W));
-
-    // Tax
-    if (totalTax > 0) {
-      lines.push(lr('Taxable Amount', 'Rs.' + (total - totalTax).toFixed(2), W));
-      lines.push(lr('CGST',           'Rs.' + (totalTax / 2).toFixed(2), W));
-      lines.push(lr('SGST',           'Rs.' + (totalTax / 2).toFixed(2), W));
-      lines.push(divider('-', W));
-      lines.push(lr('Total Tax',      'Rs.' + totalTax.toFixed(2), W));
-      lines.push(divider('-', W));
-    }
-
-    // Total
-    lines.push(lr('TOTAL', 'Rs.' + total.toFixed(2), W));
-    lines.push(divider('-', W));
-
-    // ── Footer ── (must match screen preview exactly)
-    lines.push(centre('Items sold are non-returnable'));
-
-    // Feed lines for auto-cut
-    lines.push('');
-    lines.push('');
-    lines.push('');
-
-    const text = lines.join('\n');
-
-    const lineHeightMm  = 5.1;
-    const totalHeightMm = lines.length * lineHeightMm + 8;
-    const heightMicrons = Math.round(totalHeightMm * 1000);
+    const taxHtml = totalTax > 0 ? `
+      <div style="font-size:12px;margin-bottom:4px">
+        ${[['Taxable Amount', fmtRs(total - totalTax)], ['CGST', fmtRs(totalTax / 2)], ['SGST', fmtRs(totalTax / 2)]]
+          .map(([l, v]) => `<div style="display:flex;justify-content:space-between"><span>${l}</span><span>${v}</span></div>`).join('')}
+      </div>
+      <div style="border-top:1px dashed #999;margin:6px 0"></div>
+      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:12px;margin-bottom:4px">
+        <span>Total Tax</span><span>${fmtRs(totalTax)}</span>
+      </div>
+      <div style="border-top:1px dashed #999;margin:6px 0"></div>` : '';
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-@page { size: 80mm ${totalHeightMm.toFixed(1)}mm; margin: 2mm 2mm; }
-html, body { margin: 0; padding: 0; width: 76mm;
+@page { size: 80mm auto; margin: 2mm 3mm; }
+html, body { margin: 0; padding: 0; width: 74mm;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 9.5pt; line-height: 1.5; color: #000; background: #fff;
-  font-weight: bold; -webkit-print-color-adjust: exact; }
-pre { margin: 0; padding: 0; white-space: pre; overflow: hidden; font-weight: bold; }
-</style></head><body><pre>${text}</pre></body></html>`;
+  font-size: 13px; color: #000; background: #fff;
+  line-height: 1.6; -webkit-print-color-adjust: exact; }
+</style></head><body>
+  <div style="text-align:center;margin-bottom:10px">
+    <div style="font-size:22px;font-weight:900;letter-spacing:2px">ALTHAHANI</div>
+    <div style="font-size:9px;color:#555;margin-top:2px">
+      GST IN: 27AAACB7450P1ZV<br>FSSAI: 10012022000234<br>MOB: 8921201010
+    </div>
+  </div>
+  <div style="border-top:1px dashed #999;margin:6px 0"></div>
+  <div style="font-size:12px;margin-bottom:6px">
+    ${infoRows.map(([l, v, bold]) =>
+      `<div style="display:flex;justify-content:space-between">
+        <span>${l}</span>
+        <span style="font-weight:${bold ? '700' : '400'}">${v}</span>
+      </div>`).join('')}
+  </div>
+  <div style="border-top:1px dashed #999;margin:6px 0"></div>
+  <div style="display:grid;grid-template-columns:1fr 44px 80px;gap:6px;font-size:11px;font-weight:700;margin-bottom:4px">
+    <span>Item</span>
+    <span style="text-align:center">Qty</span>
+    <span style="text-align:right">Amount</span>
+  </div>
+  <div style="border-top:1px dashed #999;margin:4px 0 6px"></div>
+  ${itemsHtml}
+  <div style="border-top:1px dashed #999;margin:6px 0"></div>
+  ${taxHtml}
+  <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:900;margin-top:4px">
+    <span>TOTAL</span><span>${fmtRs(total)}</span>
+  </div>
+  <div style="border-top:1px dashed #999;margin:10px 0 6px"></div>
+  <div style="text-align:center;font-size:11px;color:#888">Items sold are non-returnable</div>
+  <br><br><br>
+</body></html>`;
 
-    printBill(html, { width: 80000, height: heightMicrons });
+    printBill(html, { width: 80000, height: 2000000 });
   };
 
   useEffect(() => {
