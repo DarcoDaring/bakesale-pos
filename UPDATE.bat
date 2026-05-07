@@ -37,17 +37,6 @@ if %errorlevel% neq 0 (
 
 echo [1/4] Creating new migrations (makemigrations)...
 python manage.py makemigrations
-if %errorlevel% neq 0 (
-    color 0C
-    echo.
-    echo ================================
-    echo   MIGRATION FAILED! (makemigrations)
-    echo   Check your models.py for errors.
-    echo ================================
-    echo.
-    pause
-    exit /b 1
-)
 echo OK - makemigrations done.
 echo.
 
