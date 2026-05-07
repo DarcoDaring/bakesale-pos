@@ -4,7 +4,7 @@ import {
   createProduct, updateProduct, getProducts,
   getProductByBarcode, searchProducts,
   createPurchaseBill, getPurchases, getVendors, createVendor, updateVendor,
-  createPurchaseReturn
+  createPurchaseReturn, getPurchaseBill
 } from '../services/api';
 import { usePermissions } from '../context/PermissionContext';
 const UNITS = ['nos', 'kg', 'case'];
@@ -773,7 +773,8 @@ function PurchaseReturnModal({ onClose }) {
   const [searching,    setSearching]    = useState(false);
   const [lines,        setLines]        = useState([]);
   const [reason,       setReason]       = useState('');
-  const [loading,      setLoading]      = useState(false);
+  const [loading,         setLoading]         = useState(false);
+  const [vendorProductIds, setVendorProductIds] = useState(null); // null = no filter yet
 
   const debounceRef      = useRef();
   const vendorInputRef   = useRef();
@@ -819,8 +820,44 @@ function PurchaseReturnModal({ onClose }) {
     v.name.toLowerCase().includes(vendorQuery.toLowerCase()) || (v.phone && v.phone.includes(vendorQuery))
   );
 
-  const confirmVendor = v => {
+  const confirmVendor = async v => {
     setVendorId(String(v.id)); setVendorQuery(v.name); setVendorOpen(false);
+    setVendorProductIds(null); // reset while loading
+    try {
+      const { data } = await getPurchases();
+      // Filter purchases by this vendor
+      const vendorBills = data.filter(b => b.vendor === v.id || b.vendor_id === v.id);
+      // Collect unique product IDs from those bills
+      // getPurchases returns bill list — we need to fetch each bill's items
+      // But bills list doesn't have items, so we use a different approach:
+      // Search all purchases and match vendor by fetching bill details
+      // Simpler: just get all purchases and filter by vendor
+      const allPurchases = await getPurchases();
+      // allPurchases.data is a list of bills with vendor info
+      // We need to get product IDs from those bills
+      // Since bill list doesn't include items, fetch each bill
+      const billsForVendor = allPurchases.data.filter(b => {
+        const bVendorId = b.vendor_id || b.vendor;
+        return String(bVendorId) === String(v.id);
+      });
+      // Collect product IDs from bill items if available, else allow all
+      if (billsForVendor.length === 0) {
+        setVendorProductIds([]); // vendor has no purchases — show nothing
+      } else {
+        // Fetch items from each bill (up to 20 most recent)
+        const recentBills = billsForVendor.slice(0, 20);
+        const productIds = new Set();
+        await Promise.all(recentBills.map(async b => {
+          try {
+            const { data: bill } = await getPurchaseBill(b.id);
+            (bill.items || []).forEach(item => productIds.add(item.product));
+          } catch {}
+        }));
+        setVendorProductIds([...productIds]);
+      }
+    } catch {
+      setVendorProductIds(null); // on error, allow all products
+    }
     setTimeout(() => productSearchRef.current?.focus(), 50);
   };
 
@@ -835,7 +872,13 @@ function PurchaseReturnModal({ onClose }) {
   const doSearch = async q => {
     if (!q.trim()) { setResults([]); return; }
     setSearching(true);
-    try { const { data } = await searchProducts(q); setResults(data); setResultHiIdx(0); }
+    try {
+      const { data } = await searchProducts(q);
+      const filtered = vendorProductIds !== null
+        ? data.filter(p => vendorProductIds.includes(p.id))
+        : data;
+      setResults(filtered); setResultHiIdx(0);
+    }
     catch { setResults([]); } finally { setSearching(false); }
   };
 
@@ -870,7 +913,12 @@ function PurchaseReturnModal({ onClose }) {
     try {
       const { data } = await getProductByBarcode(query.trim());
       const rows = Array.isArray(data) ? data : [data];
-      if (rows.length > 0) addProduct(rows[0]); else toast.error('Product not found');
+      const filtered = vendorProductIds !== null
+        ? rows.filter(p => vendorProductIds.includes(p.id))
+        : rows;
+      if (filtered.length > 0) addProduct(filtered[0]);
+      else if (rows.length > 0) toast.error('This product was not purchased from this vendor');
+      else toast.error('Product not found');
     } catch { toast.error('Product not found'); }
   };
 
@@ -896,7 +944,7 @@ function PurchaseReturnModal({ onClose }) {
 
   return (
     <div className="modal-overlay">
-      <div className="modal" style={{ maxWidth: 620, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div className="modal" style={{ maxWidth: '95vw', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h2 style={{ margin: 0 }}>↩️ Purchase Return</h2>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -938,7 +986,8 @@ function PurchaseReturnModal({ onClose }) {
         <div style={{ position: 'relative', marginBottom: 12 }}>
           <input ref={productSearchRef} value={query} onChange={handleSearchChange} onKeyDown={handleScanKey}
             placeholder={vendorId ? '🔍 Scan barcode or search product… (↑↓ navigate, Enter to add)' : '⬆ Select a vendor first'}
-            disabled={!vendorId} style={{ fontSize: 14, padding: '10px 14px', opacity: !vendorId ? 0.45 : 1 }} />
+            disabled={!vendorId} style={{ fontSize: 14, padding: '10px 14px', opacity: !vendorId ? 0.45 : 1 }}
+        placeholder={!vendorId ? '⬆ Select a vendor first' : vendorProductIds === null && vendorId ? '⏳ Loading vendor products…' : vendorProductIds?.length === 0 ? '⚠️ No purchases found for this vendor' : '🔍 Scan barcode or search product… (↑↓ navigate, Enter to add)'} />
           {searching && <div style={{ position: 'absolute', right: 14, top: 14, fontSize: 12, color: 'var(--text3)' }}>…</div>}
           {results.length > 0 && (
             <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', maxHeight: 220, overflowY: 'auto', boxShadow: 'var(--shadow)', marginTop: 2 }}>

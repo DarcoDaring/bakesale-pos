@@ -5,12 +5,16 @@ import {
   getBills, getBill, editBillPayment, deleteBill,
   getInternalMasters, createInternalSaleBill,
   getDirectMasters, createDirectSale, getDirectSaleReport,
+  editDirectSalePayment,
+  deleteDirectSale,
   createItemReturn, getBillsWithProduct,
 } from '../services/api';
 import PrintBill from '../components/PrintBill';
 import { usePermissions } from '../context/PermissionContext';
+import { usePrinter } from '../hooks/usePrinter';
 
 const fmt = n => `₹${parseFloat(n || 0).toFixed(2)}`;
+const fmtDate = d => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 const payColor = {
   cash: 'badge-green', card: 'badge-blue', upi: 'badge-purple',
   cash_card: 'badge-yellow', cash_upi: 'badge-yellow',
@@ -387,54 +391,108 @@ function EditPaymentModal({ bill, onClose, onSaved }) {
 function ViewBillsModal({ onClose }) {
   const { isAdmin, can } = usePermissions();
   const [bills, setBills]             = useState([]);
+  const [directSales, setDirectSales] = useState([]);
   const [loading, setLoading]         = useState(true);
   const [search, setSearch]           = useState('');
   const [filter, setFilter]           = useState('all');
   const [detailBill, setDetailBill]   = useState(null);
   const [editingBill, setEditingBill] = useState(null);
-  const [deleting, setDeleting]       = useState(null);
+  const [deleting, setDeleting]         = useState(null);
+  const [editingDirect,  setEditingDirect]  = useState(null);
+  const [printingDirect, setPrintingDirect] = useState(null);
+  const [deletingDirect, setDeletingDirect] = useState(null);
+  // Date filter — default to today
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [dateFrom, setDateFrom] = useState(todayStr);
+  const [dateTo,   setDateTo]   = useState(todayStr);
 
-  const fetchBills = async () => {
+  const fetchAll = async () => {
     setLoading(true);
-    try { const { data } = await getBills(); setBills(data); }
-    catch { toast.error('Failed to load bills'); }
+    try {
+      const params = {};
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo)   params.date_to   = dateTo;
+
+      const [billsRes, directRes] = await Promise.all([
+        getBills(params),
+        getDirectSaleReport(params),
+      ]);
+      setBills(billsRes.data);
+      setDirectSales(directRes.data?.sales || []);
+    } catch { toast.error('Failed to load bills'); }
     finally { setLoading(false); }
   };
-  useEffect(() => { fetchBills(); }, []);
+
+  useEffect(() => { fetchAll(); }, []);
 
   const openBill = async b => {
     try { const { data } = await getBill(b.id); setDetailBill(data); }
     catch { toast.error('Failed to load bill details'); }
   };
+
   const handleDelete = async b => {
     if (!window.confirm(`Delete bill ${b.bill_number}?`)) return;
     setDeleting(b.id);
-    try { await deleteBill(b.id); toast.success(`Bill ${b.bill_number} deleted`); fetchBills(); }
+    try { await deleteBill(b.id); toast.success(`Bill ${b.bill_number} deleted`); fetchAll(); }
     catch { toast.error('Failed to delete bill'); } finally { setDeleting(null); }
   };
 
-  if (detailBill)  return <PrintBill bill={detailBill} onClose={() => setDetailBill(null)} />;
-  if (editingBill) return <EditPaymentModal bill={editingBill} onClose={() => setEditingBill(null)} onSaved={fetchBills} />;
+  const handleDeleteDirect = async s => {
+    if (!window.confirm(`Delete direct sale ${s.sale_number || s.id}?`)) return;
+    setDeletingDirect(s.id);
+    try {
+      await deleteDirectSale(s.id);
+      toast.success('Direct sale deleted');
+      fetchAll();
+    } catch { toast.error('Failed to delete direct sale'); }
+    finally { setDeletingDirect(null); }
+  };
 
-  const filtered = bills
+  if (detailBill)  return <PrintBill bill={detailBill} onClose={() => setDetailBill(null)} />;
+  if (editingBill) return <EditPaymentModal bill={editingBill} onClose={() => setEditingBill(null)} onSaved={fetchAll} />;
+
+  const filteredBills = bills
     .filter(b => b.bill_number.toLowerCase().includes(search.toLowerCase()))
     .filter(b => {
       if (filter === 'returned') return b.return_number;
       if (filter === 'sale')     return !b.return_number;
+      if (filter === 'direct')   return false;
       return true;
     });
 
+  const filteredDirect = directSales.filter(s =>
+    (s.sale_number || '').toLowerCase().includes(search.toLowerCase()) ||
+    (s.item_name || '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  const TABS = [
+    { k: 'all',      label: 'All Bills' },
+    { k: 'sale',     label: 'Sale Only' },
+    { k: 'returned', label: '↩️ Returned' },
+    { k: 'direct',   label: '⚡ Direct Sale' },
+  ];
+
   return (
-    <div className="modal-overlay"><div className="modal" style={{ maxWidth: 960, maxHeight: '88vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <div className="modal-overlay"><div className="modal" style={{ maxWidth: '95vw', maxHeight: '95vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <h2 style={{ margin: 0 }}>📋 Bills</h2>
         <button className="btn btn-secondary btn-sm" onClick={onClose}>✕ Close</button>
       </div>
 
+      {/* Date filter row */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'center', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '10px 14px' }}>
+        <span style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 600 }}>📅 Date:</span>
+        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ width: 150 }} />
+        <span style={{ color: 'var(--text3)' }}>to</span>
+        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ width: 150 }} />
+        <button className="btn btn-primary btn-sm" onClick={fetchAll}>Load</button>
+      </div>
+
       <div style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'center' }}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search by bill number…" style={{ flex: 1 }} autoFocus />
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="🔍 Search by bill number or item name…" style={{ flex: 1 }} autoFocus />
         <div style={{ display: 'flex', gap: 6 }}>
-          {[{ k: 'all', label: 'All' }, { k: 'sale', label: 'Sale Bills' }, { k: 'returned', label: '↩️ Returned' }].map(f => (
+          {TABS.map(f => (
             <button key={f.k} onClick={() => setFilter(f.k)} className="btn btn-sm"
               style={{ background: filter===f.k?'var(--accent)':'var(--surface)', color: filter===f.k?'#fff':'var(--text2)', border: `1px solid ${filter===f.k?'var(--accent)':'var(--border)'}` }}>
               {f.label}
@@ -445,41 +503,345 @@ function ViewBillsModal({ onClose }) {
 
       {loading ? <div className="spinner" /> : (
         <div style={{ overflowY: 'auto' }}>
-          <table>
-            <thead>
-              <tr>
-                <th>Bill No</th><th>Date</th><th>Payment</th><th>Total</th>
-                <th>Return No</th><th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(b => (
-                <tr key={b.id}>
-                  <td><span className="badge badge-orange" style={{ fontFamily: 'var(--mono)' }}>{b.bill_number}</span></td>
-                  <td style={{ fontSize: 12, color: 'var(--text3)' }}>{new Date(b.created_at).toLocaleString()}</td>
-                  <td><span className={`badge ${payColor[b.payment_type]||'badge-orange'}`}>{payLabel[b.payment_type]||b.payment_type}</span></td>
-                  <td style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{fmt(b.total_amount)}</td>
-                  <td>
-                    {b.return_number
-                      ? <span className="badge badge-red" style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>{b.return_number}</span>
-                      : <span style={{ color: 'var(--text3)', fontSize: 12 }}>—</span>}
-                  </td>
-                  <td><div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => openBill(b)}>🖨️ View</button>
-                    {(isAdmin || can('can_edit_bill')) && <button className="btn btn-secondary btn-sm" onClick={() => setEditingBill(b)} style={{ color: 'var(--blue)', borderColor: 'var(--blue)' }}>✏️ Edit</button>}
-                    {(isAdmin || can('can_delete_bill')) && <button className="btn btn-danger btn-sm" onClick={() => handleDelete(b)} disabled={deleting === b.id}>{deleting === b.id ? '…' : '🗑️'}</button>}
-                  </div></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filtered.length === 0 && <div className="empty-state"><div className="icon">📄</div>{search ? `No bills matching "${search}"` : 'No bills'}</div>}
+
+          {/* ── Sale Bills ── */}
+          {filter !== 'direct' && (
+            <>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Bill No</th><th>Date & Time</th><th>Payment</th><th>Total</th>
+                    <th>Return No</th><th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredBills.map(b => (
+                    <tr key={b.id} style={{ background: b.return_number ? 'rgba(239,68,68,0.06)' : undefined }}>
+                      <td>
+                        <span className="badge badge-orange" style={{ fontFamily: 'var(--mono)' }}>{b.bill_number}</span>
+                        {b.return_number && <div style={{ fontSize: 10, color: 'var(--red)', marginTop: 2 }}>↩️ returned</div>}
+                      </td>
+                      <td style={{ fontSize: 12, color: 'var(--text3)' }}>{new Date(b.created_at).toLocaleString('en-IN')}</td>
+                      <td><span className={`badge ${payColor[b.payment_type]||'badge-orange'}`}>{payLabel[b.payment_type]||b.payment_type}</span></td>
+                      <td style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{fmt(b.total_amount)}</td>
+                      <td>
+                        {b.return_number
+                          ? <span className="badge badge-red" style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>{b.return_number}</span>
+                          : <span style={{ color: 'var(--text3)', fontSize: 12 }}>—</span>}
+                      </td>
+                      <td><div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => openBill(b)}>🖨️ View</button>
+                        {(isAdmin || can('can_edit_bill')) && <button className="btn btn-secondary btn-sm" onClick={() => setEditingBill(b)} style={{ color: 'var(--blue)', borderColor: 'var(--blue)' }}>✏️ Edit</button>}
+                        {(isAdmin || can('can_delete_bill')) && <button className="btn btn-danger btn-sm" onClick={() => handleDelete(b)} disabled={deleting === b.id}>{deleting === b.id ? '…' : '🗑️'}</button>}
+                      </div></td>
+                    </tr>
+                  ))}
+                </tbody>
+                {filteredBills.length > 0 && (
+                  <tfoot>
+                    <tr style={{ background: 'var(--bg2)', fontWeight: 800 }}>
+                      <td colSpan={3} style={{ padding: '8px 12px', textAlign: 'right' }}>Total</td>
+                      <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)', color: 'var(--accent)' }}>
+                        {fmt(filteredBills.reduce((s, b) => s + parseFloat(b.total_amount || 0), 0))}
+                      </td>
+                      <td colSpan={2}></td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+              {filteredBills.length === 0 && (
+                <div className="empty-state"><div className="icon">📄</div>{search ? `No bills matching "${search}"` : 'No bills for this period'}</div>
+              )}
+            </>
+          )}
+
+          {/* ── Direct Sales ── */}
+          {filter === 'direct' && (
+            <>
+              <table>
+                <thead>
+                  <tr>
+                    <th>DS No</th><th>Date & Time</th><th>Item</th><th>Payment</th>
+                    <th>Amount</th><th>By</th><th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredDirect.map((s, i) => (
+                    <tr key={i}>
+                      <td><span className="badge badge-green" style={{ fontFamily: 'var(--mono)' }}>{s.sale_number || '—'}</span></td>
+                      <td style={{ fontSize: 12, color: 'var(--text3)' }}>{new Date(s.date).toLocaleString('en-IN')}</td>
+                      <td style={{ fontWeight: 600 }}>{s.item_name}</td>
+                      <td><span className={`badge ${payColor[s.payment_type]||'badge-orange'}`}>{payLabel[s.payment_type]||s.payment_type}</span></td>
+                      <td style={{ fontWeight: 700, color: 'var(--green)', fontFamily: 'var(--mono)' }}>{fmt(s.price)}</td>
+                      <td style={{ fontSize: 12, color: 'var(--text3)' }}>{s.created_by || '—'}</td>
+                      <td><div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => setPrintingDirect(s)}>🖨️ Print</button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => setEditingDirect(s)} style={{ color: 'var(--blue)', borderColor: 'var(--blue)' }}>✏️ Edit</button>
+                        {(isAdmin || can('can_delete_bill')) && <button className="btn btn-danger btn-sm" onClick={() => handleDeleteDirect(s)} disabled={deletingDirect === s.id}>{deletingDirect === s.id ? '…' : '🗑️'}</button>}
+                      </div></td>
+                    </tr>
+                  ))}
+                </tbody>
+                {filteredDirect.length > 0 && (
+                  <tfoot>
+                    <tr style={{ background: 'var(--bg2)', fontWeight: 800 }}>
+                      <td colSpan={5} style={{ padding: '8px 12px', textAlign: 'right' }}>Total</td>
+                      <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)', color: 'var(--green)' }}>
+                        {fmt(filteredDirect.reduce((s, r) => s + parseFloat(r.price || 0), 0))}
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                )}
+                {filteredDirect.length === 0 && (
+                  <div className="empty-state"><div className="icon">⚡</div>No direct sales for this period</div>
+                )}
+              </table>
+            </>
+          )}
         </div>
       )}
+    {printingDirect && <PrintDirectSale sale={printingDirect} onClose={() => setPrintingDirect(null)} />}
+    {editingDirect  && <EditDirectPaymentModal sale={editingDirect} onClose={() => setEditingDirect(null)} onSaved={fetchAll} />}
     </div></div>
   );
 }
+function PrintDirectSale({ sale, onClose }) {
+  const { printBill } = usePrinter();
 
+  const doPrint = () => {
+    if (!sale) return;
+    const total = parseFloat(sale.price || 0);
+    const W = 32;
+    const centre = (s, w = W) => {
+      const pad = Math.max(0, Math.floor((w - s.length) / 2));
+      return ' '.repeat(pad) + s;
+    };
+    const lr = (label, value, w = W) => {
+      const l = String(label), v = String(value);
+      const gap = w - l.length - v.length;
+      return l + (gap > 0 ? ' '.repeat(gap) : ' ') + v;
+    };
+    const divider = (c = '-', w = W) => c.repeat(w);
+
+    const lines = [];
+    lines.push(centre('ALTHAHANI'));
+    lines.push(centre('GST IN: 27AAACB7450P1ZV'));
+    lines.push(centre('FSSAI: 10012022000234'));
+    lines.push(centre('MOB: 8921201010'));
+    lines.push(divider('-', W));
+    lines.push(lr('DS No',    sale.sale_number || '—', W));
+    lines.push(lr('Date',     new Date(sale.date).toLocaleDateString('en-IN'), W));
+    lines.push(lr('Time',     new Date(sale.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }), W));
+    lines.push(lr('Payment',  payLabel[sale.payment_type] || sale.payment_type, W));
+    if (sale.created_by) lines.push(lr('Cashier', sale.created_by, W));
+    lines.push(divider('-', W));
+    lines.push('Item            ' + '   Qty' + '    Amount');
+    lines.push(divider('-', W));
+    const name = sale.item_name || '';
+    const amtStr = ('Rs.' + total.toFixed(2)).padStart(10);
+    lines.push(name.substring(0, 16).padEnd(16) + '     1' + amtStr);
+    let rest = name.substring(16);
+    while (rest.length > 0) { lines.push(rest.substring(0, 16)); rest = rest.substring(16); }
+    lines.push(divider('-', W));
+    lines.push(lr('TOTAL', 'Rs.' + total.toFixed(2), W));
+    lines.push(divider('-', W));
+    lines.push(centre('Items sold are non-returnable'));
+    lines.push(''); lines.push(''); lines.push('');
+
+    const text = lines.join('\n');
+    const lineHeightMm  = 5.1;
+    const totalHeightMm = lines.length * lineHeightMm + 8;
+    const heightMicrons = Math.round(totalHeightMm * 1000);
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+@page { size: 80mm ${totalHeightMm.toFixed(1)}mm; margin: 2mm 2mm; }
+html, body { margin: 0; padding: 0; width: 76mm;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 9.5pt; line-height: 1.5; color: #000; background: #fff;
+  font-weight: bold; -webkit-print-color-adjust: exact; }
+pre { margin: 0; padding: 0; white-space: pre; overflow: hidden; font-weight: bold; }
+</style></head><body><pre>${text}</pre></body></html>`;
+
+    printBill(html, { width: 80000, height: heightMicrons });
+  };
+
+  useEffect(() => {
+    const handleKey = e => {
+      if (e.key === 'Enter')  { e.preventDefault(); doPrint(); }
+      if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [sale, onClose]);
+
+  if (!sale) return null;
+  const total = parseFloat(sale.price || 0);
+  const fmtRs = n => `Rs.${parseFloat(n || 0).toFixed(2)}`;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 380, padding: 0, overflow: 'hidden' }}
+        onClick={e => e.stopPropagation()}>
+        <div className="no-print" style={{ display: 'flex', gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg2)' }}>
+          <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={doPrint}>
+            🖨️ Print Bill (Enter)
+          </button>
+          <button className="btn btn-secondary" onClick={onClose}>✕ Close (Esc)</button>
+        </div>
+        <div style={{ padding: '20px 24px', fontFamily: 'monospace', fontSize: 13, color: '#000', background: '#fff', lineHeight: 1.6 }}>
+          <div style={{ textAlign: 'center', marginBottom: 12 }}>
+            <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: 2 }}>ALTHAHANI</div>
+            <div style={{ fontSize: 8, color: '#555', marginTop: 2 }}>
+              GST IN: 27AAACB7450P1ZV<br />
+              FSSAI: 10012022000234<br />
+              MOB: 8921201010
+            </div>
+          </div>
+          <div style={{ borderTop: '1px dashed #999', margin: '8px 0' }} />
+          <div style={{ fontSize: 12, marginBottom: 8 }}>
+            {[
+              ['DS No',   sale.sale_number || '—'],
+              ['Date',    new Date(sale.date).toLocaleDateString('en-IN')],
+              ['Time',    new Date(sale.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })],
+              ['Payment', payLabel[sale.payment_type] || sale.payment_type],
+              ...(sale.created_by ? [['Cashier', sale.created_by]] : []),
+            ].map(([label, value]) => (
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>{label}</span>
+                <span style={{ fontWeight: label === 'DS No' ? 700 : 400 }}>{value}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ borderTop: '1px dashed #999', margin: '8px 0' }} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 50px 90px', gap: 10, fontSize: 11, fontWeight: 700, marginBottom: 4 }}>
+            <span>Item</span><span style={{ textAlign: 'center' }}>Qty</span><span style={{ textAlign: 'right' }}>Amount</span>
+          </div>
+          <div style={{ marginBottom: 6 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 50px 90px', gap: 10, fontSize: 12, alignItems: 'start' }}>
+              <span style={{ fontWeight: 600, wordBreak: 'break-word', lineHeight: 1.3 }}>{sale.item_name}</span>
+              <span style={{ textAlign: 'center', color: '#555' }}>1</span>
+              <span style={{ textAlign: 'right', fontWeight: 600 }}>{fmtRs(total)}</span>
+            </div>
+          </div>
+          <div style={{ borderTop: '1px dashed #999', margin: '8px 0' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 900, marginTop: 4 }}>
+            <span>TOTAL</span><span>{fmtRs(total)}</span>
+          </div>
+          <div style={{ borderTop: '1px dashed #999', margin: '12px 0 8px' }} />
+          <div style={{ textAlign: 'center', fontSize: 11, color: '#888' }}>
+            <div>Items sold are non-returnable</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+// EditDirectPaymentModal
+// ─────────────────────────────────────────────────────────────────────────────
+function EditDirectPaymentModal({ sale, onClose, onSaved }) {
+  const total = parseFloat(sale.price);
+  const isSplit = sale.payment_type === 'cash_card' || sale.payment_type === 'cash_upi';
+  const [mode, setMode]             = useState(isSplit ? 'split' : 'single');
+  const [singleType, setSingleType] = useState(isSplit ? 'cash' : sale.payment_type);
+  const [creditType, setCreditType] = useState(sale.payment_type === 'cash_upi' ? 'upi' : 'card');
+  const [cashAmt, setCashAmt]       = useState(isSplit ? String(sale.cash_amount) : '');
+  const [creditAmt, setCreditAmt]   = useState(isSplit ? String(sale.payment_type === 'cash_upi' ? sale.upi_amount : sale.card_amount) : '');
+  const [loading, setLoading]       = useState(false);
+
+  const handleCashChange   = e => { const c = e.target.value; setCashAmt(c); setCreditAmt((total-(parseFloat(c)||0)) > 0 ? (total-(parseFloat(c)||0)).toFixed(2) : '0.00'); };
+  const handleCreditChange = e => { const k = e.target.value; setCreditAmt(k); setCashAmt((total-(parseFloat(k)||0)) > 0 ? (total-(parseFloat(k)||0)).toFixed(2) : '0.00'); };
+  const cashVal   = parseFloat(cashAmt)   || 0;
+  const creditVal = parseFloat(creditAmt) || 0;
+  const splitOk   = Math.abs(cashVal + creditVal - total) < 0.01;
+
+  const handleSave = async () => {
+    let payment_type, cash_amount, card_amount, upi_amount;
+    if (mode === 'single') {
+      payment_type = singleType;
+      cash_amount  = singleType === 'cash' ? total : 0;
+      card_amount  = singleType === 'card' ? total : 0;
+      upi_amount   = singleType === 'upi'  ? total : 0;
+    } else {
+      if (!splitOk) { toast.error(`Amounts must sum to ${fmt(total)}`); return; }
+      payment_type = creditType === 'card' ? 'cash_card' : 'cash_upi';
+      cash_amount  = cashVal;
+      card_amount  = creditType === 'card' ? creditVal : 0;
+      upi_amount   = creditType === 'upi'  ? creditVal : 0;
+    }
+    setLoading(true);
+    try {
+      await editDirectSalePayment(sale.id, { payment_type, cash_amount, card_amount, upi_amount });
+      toast.success('Payment updated');
+      onSaved();
+      onClose();
+    } catch { toast.error('Failed to update payment'); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div className="modal-overlay"><div className="modal">
+      <h2>✏️ Edit Direct Sale Payment</h2>
+      <div style={{ background: 'var(--bg3)', borderRadius: 'var(--radius)', padding: 14, marginBottom: 20 }}>
+        <div style={{ fontWeight: 700, fontSize: 18 }}>{sale.sale_number || '—'}</div>
+        <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 4 }}>{sale.item_name}</div>
+        <div style={{ color: 'var(--accent)', fontFamily: 'var(--mono)', fontSize: 20, fontWeight: 800, marginTop: 4 }}>{fmt(total)}</div>
+      </div>
+      <div className="form-group">
+        <label>Payment Mode</label>
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          {[{ v: 'single', label: 'Full Payment' }, { v: 'split', label: '💵 Cash + Credit' }].map(m => (
+            <button key={m.v} onClick={() => setMode(m.v)} className="btn"
+              style={{ flex: 1, justifyContent: 'center', background: mode===m.v?'rgba(255,255,255,0.08)':'var(--bg3)', color: mode===m.v?'var(--accent)':'var(--text2)', border: `1px solid ${mode===m.v?'var(--accent)':'var(--border)'}` }}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {mode === 'single' ? (
+        <div className="form-group"><label>Payment Type</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 4 }}>
+            {[{ v: 'cash', label: '💵 Cash', color: 'var(--green)' }, { v: 'card', label: '💳 Card', color: 'var(--blue)' }, { v: 'upi', label: '📱 UPI', color: 'var(--purple)' }].map(t => (
+              <button key={t.v} onClick={() => setSingleType(t.v)} className="btn"
+                style={{ justifyContent: 'center', padding: '10px', background: singleType===t.v?'rgba(255,255,255,0.08)':'var(--bg3)', color: t.color, border: `1px solid ${singleType===t.v?t.color:'var(--border)'}` }}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="form-group"><label>Credit Method</label>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              {[{ v: 'card', label: '💳 Card', color: 'var(--blue)' }, { v: 'upi', label: '📱 UPI', color: 'var(--purple)' }].map(t => (
+                <button key={t.v} onClick={() => setCreditType(t.v)} className="btn"
+                  style={{ flex: 1, justifyContent: 'center', background: creditType===t.v?'rgba(255,255,255,0.08)':'var(--bg3)', color: t.color, border: `1px solid ${creditType===t.v?t.color:'var(--border)'}` }}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="form-row" style={{ marginBottom: 10 }}>
+            <div className="form-group" style={{ margin: 0 }}><label>💵 Cash Amount</label><input type="number" value={cashAmt} onChange={handleCashChange} placeholder="0.00" /></div>
+            <div className="form-group" style={{ margin: 0 }}><label>{creditType==='card'?'💳 Card':'📱 UPI'} Amount</label><input type="number" value={creditAmt} onChange={handleCreditChange} placeholder="0.00" /></div>
+          </div>
+          {(cashAmt !== '' || creditAmt !== '') && (
+            <div style={{ fontSize: 12, marginBottom: 12, padding: '8px 12px', borderRadius: 'var(--radius)', background: splitOk?'var(--green-dim)':'var(--red-dim)', color: splitOk?'var(--green)':'var(--red)' }}>
+              {splitOk ? '✓ Amounts match total' : `Remaining: ${fmt(total - cashVal - creditVal)}`}
+            </div>
+          )}
+        </>
+      )}
+      <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+        <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={handleSave} disabled={loading}>
+          {loading ? 'Saving…' : '✓ Save Changes'}
+        </button>
+        <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+      </div>
+    </div></div>
+  );
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // ItemReturnModal
 // BUG FIXES:
@@ -1225,9 +1587,23 @@ function DirectSaleModal({ onClose }) {
     if (!price || total <= 0) { toast.error('Enter a valid amount'); return; }
     setLoading(true);
     try {
-      await createDirectSale({ item: parseInt(selectedId), price: total, payment_type: pType, cash_amount: cAmt, card_amount: cdAmt, upi_amount: uAmt });
+      const { data } = await createDirectSale({ item: parseInt(selectedId), price: total, payment_type: pType, cash_amount: cAmt, card_amount: cdAmt, upi_amount: uAmt });
       toast.success('Direct sale recorded!');
-      onClose();
+      // Build sale object for printing
+      const master = masters.find(m => String(m.id) === String(selectedId));
+      const saleForPrint = {
+        id:           data.id,
+        sale_number:  data.sale_number || '—',
+        item_name:    master?.name || '—',
+        price:        total,
+        payment_type: pType,
+        cash_amount:  cAmt,
+        card_amount:  cdAmt,
+        upi_amount:   uAmt,
+        date:         data.date || new Date().toISOString(),
+        created_by:   data.created_by || '',
+      };
+      onClose(saleForPrint);
     } catch (err) { toast.error(err.response?.data?.detail || 'Failed to record direct sale'); }
     finally { setLoading(false); }
   };
@@ -1245,7 +1621,7 @@ function DirectSaleModal({ onClose }) {
 
   useEffect(() => {
     const handleKey = e => {
-      if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
+      if (e.key === 'Escape') { e.preventDefault(); onClose(null); return; }
       if (e.key === 'F1') { e.preventDefault(); doSave('cash', total, 0, 0); return; }
       if (e.key === 'F2') { e.preventDefault(); doSave('card', 0, total, 0); return; }
       if (e.key === 'F3') { e.preventDefault(); doSave('upi',  0, 0, total); return; }
@@ -1343,7 +1719,7 @@ function DirectSaleModal({ onClose }) {
         )}
       </div>
 
-      <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', marginTop: 4 }} onClick={onClose}>Cancel</button>
+      <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', marginTop: 4 }} onClick={() => onClose(null)}>Cancel</button>
     </div></div>
   );
 }
@@ -1359,7 +1735,8 @@ export default function Sale() {
   const [showReturn,   setShowReturn]   = useState(false);
   const [showInternal, setShowInternal] = useState(false);
   const [showDirect,   setShowDirect]   = useState(false);
-  const [printBill,    setPrintBill]    = useState(null);
+  const [printBill,      setPrintBill]      = useState(null);
+  const [printingDirect, setPrintingDirect] = useState(null);
   const [searchFocus,  setSearchFocus]  = useState(0);
 
   const total = items.reduce((s, i) => s + i.price * (parseFloat(i.qty) || 0), 0);
@@ -1454,7 +1831,8 @@ export default function Sale() {
     } catch (err) { toast.error(err.response?.data?.detail || 'Failed to save bill'); }
   };
 
-  if (printBill) return <PrintBill bill={printBill} onClose={() => setPrintBill(null)} />;
+  if (printBill)      return <PrintBill bill={printBill} onClose={() => setPrintBill(null)} />;
+  if (printingDirect) return <PrintDirectSale sale={printingDirect} onClose={() => setPrintingDirect(null)} />;
 
   const Fkey = ({ k }) => (
     <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(255,255,255,0.2)', borderRadius: 4, padding: '1px 5px', marginLeft: 6, fontFamily: 'monospace' }}>{k}</span>
@@ -1535,7 +1913,7 @@ export default function Sale() {
       {showBills    && <ViewBillsModal onClose={() => setShowBills(false)} />}
       {showReturn   && <ItemReturnModal onClose={() => setShowReturn(false)} />}
       {showInternal && <InternalSaleModal onClose={() => setShowInternal(false)} />}
-      {showDirect   && <DirectSaleModal onClose={() => setShowDirect(false)} />}
+      {showDirect   && <DirectSaleModal onClose={sale => { setShowDirect(false); if (sale) setPrintingDirect(sale); }} />}
     </div>
   );
 }

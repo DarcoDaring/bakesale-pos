@@ -250,6 +250,7 @@ function UserPermissionsModal({ onClose }) {
                     <PermToggle label="Sales Tax Report"      field="can_view_salestax_report" />
                     <PermToggle label="Purchase Tax Report"   field="can_view_purtax_report" />
                     <PermToggle label="Direct Sale Report"    field="can_view_direct_report" />
+                    <PermToggle label="Profit & Loss Report"  field="can_view_pl_report"      description="View the Profit & Loss report" />
                     <PermToggle label="Print Reports"         field="can_print_reports"       description="Print any report" />
                   </Section>
                   <Section title="Stock — Sub Permissions">

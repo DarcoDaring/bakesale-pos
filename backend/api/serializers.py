@@ -5,7 +5,7 @@ from .models import (
     SaleBill, SaleItem, ReturnItem,
     InternalSaleMaster, InternalSale, PurchaseReturn,
     DirectSaleMaster, DirectSale, StockAdjustmentRequest, StockTransfer,
-    ItemReturn, ItemReturnLine, InternalSaleBill
+    ItemReturn, ItemReturnLine, InternalSaleBill, PhysicalStockRequest
 )
 from decimal import Decimal
 from django.db import transaction
@@ -182,11 +182,21 @@ class PurchaseBillSerializer(serializers.ModelSerializer):
                         existing_batch = b
                         break
 
+                new_pp = Decimal(str(item_data.get('purchase_price', 0) or 0))
                 if existing_batch:
-                    existing_batch.quantity = Decimal(str(existing_batch.quantity)) + stock_to_add
+                    old_qty = Decimal(str(existing_batch.quantity))
+                    old_pp  = Decimal(str(existing_batch.purchase_price or 0))
+                    total   = old_qty + stock_to_add
+                    existing_batch.purchase_price = (
+                        (old_qty * old_pp + stock_to_add * new_pp) / total
+                    ).quantize(Decimal('0.01')) if total > 0 else new_pp
+                    existing_batch.quantity = old_qty + stock_to_add
                     existing_batch.save()
                 else:
-                    StockBatch.objects.create(product=product, mrp=mrp_decimal, quantity=stock_to_add)
+                    StockBatch.objects.create(
+                        product=product, mrp=mrp_decimal,
+                        quantity=stock_to_add, purchase_price=new_pp,
+                    )
 
                 product.stock_quantity = Decimal(str(product.stock_quantity)) + stock_to_add
                 product.selling_unit   = selling_unit
@@ -509,6 +519,18 @@ class StockAdjustmentRequestSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'status', 'created_at', 'reviewed_at']
 
 
+class PhysicalStockRequestSerializer(serializers.ModelSerializer):
+    requested_by_name = serializers.CharField(source='requested_by.username', read_only=True)
+    reviewed_by_name  = serializers.CharField(source='reviewed_by.username',  read_only=True)
+
+    class Meta:
+        model  = PhysicalStockRequest
+        fields = ['id', 'request_number', 'status', 'reason',
+                  'requested_by_name', 'reviewed_by_name',
+                  'created_at', 'reviewed_at']
+        read_only_fields = ['id', 'request_number', 'status', 'created_at', 'reviewed_at']
+
+
 class StockTransferSerializer(serializers.ModelSerializer):
     product_name    = serializers.CharField(source='product.name',    read_only=True)
     product_barcode = serializers.CharField(source='product.barcode', read_only=True)
@@ -553,11 +575,21 @@ class StockTransferSerializer(serializers.ModelSerializer):
                 existing = b
                 break
 
+        new_pp = Decimal(str(validated_data.get('purchase_price', 0) or 0))
         if existing:
-            existing.quantity = Decimal(str(existing.quantity)) + qty
+            old_qty = Decimal(str(existing.quantity))
+            old_pp  = Decimal(str(existing.purchase_price or 0))
+            total   = old_qty + qty
+            existing.purchase_price = (
+                (old_qty * old_pp + qty * new_pp) / total
+            ).quantize(Decimal('0.01')) if total > 0 else new_pp
+            existing.quantity = old_qty + qty
             existing.save()
         else:
-            StockBatch.objects.create(product=product, mrp=mrp_decimal, quantity=qty)
+            StockBatch.objects.create(
+                product=product, mrp=mrp_decimal,
+                quantity=qty, purchase_price=new_pp,
+            )
 
         product.stock_quantity = Decimal(str(product.stock_quantity)) + qty
         product.save()

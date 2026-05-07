@@ -275,11 +275,7 @@
 
         <div style={{ marginBottom: 16 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>🛒 Sale Item Master</h2>
-          <p style={{ color: 'var(--text3)', fontSize: 13, marginBottom: 16 }}>
-            <strong>⚡ Direct:</strong> always on sale page, no purchase needed. &nbsp;
-            <strong>📂 Group + Purchase Required:</strong> only shows after purchase, stock tracked. &nbsp;
-            <strong>📂 Group (no purchase):</strong> always shows all sub-items.
-          </p>
+          
         </div>
 
         {/* Filters */}

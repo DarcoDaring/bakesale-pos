@@ -95,11 +95,12 @@ class Product(models.Model):
 
 
 class StockBatch(models.Model):
-    product    = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='batches')
-    mrp        = models.DecimalField(max_digits=10, decimal_places=2)
-    quantity   = models.DecimalField(max_digits=12, decimal_places=3, default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    product        = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='batches')
+    mrp            = models.DecimalField(max_digits=10, decimal_places=2)
+    purchase_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    quantity       = models.DecimalField(max_digits=12, decimal_places=3, default=0)
+    created_at     = models.DateTimeField(auto_now_add=True)
+    updated_at     = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['mrp', 'created_at']
@@ -407,6 +408,7 @@ class StockAdjustmentRequest(models.Model):
     ]
     ps_request     = models.ForeignKey(PhysicalStockRequest, on_delete=models.CASCADE, related_name='items', null=True, blank=True)
     product        = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='stock_adjustments')
+    batch          = models.ForeignKey(StockBatch, on_delete=models.SET_NULL, null=True, blank=True, related_name='adjustments')
     system_stock   = models.DecimalField(max_digits=12, decimal_places=3)
     physical_stock = models.DecimalField(max_digits=12, decimal_places=3)
     status         = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
@@ -461,6 +463,7 @@ class UserPermission(models.Model):
     can_view_salestax_report  = models.BooleanField(default=True)
     can_view_purtax_report    = models.BooleanField(default=True)
     can_view_direct_report    = models.BooleanField(default=True)
+    can_view_pl_report        = models.BooleanField(default=True)
     can_print_reports         = models.BooleanField(default=True)
 
     # Stock sub-permissions

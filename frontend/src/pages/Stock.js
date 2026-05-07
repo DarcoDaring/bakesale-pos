@@ -84,7 +84,7 @@ function PhysicalStockModal({ onClose }) {
     } catch { toast.error('Product not found'); }
   };
 
-  const handleQtyKey = (e, key) => {
+  const handleQtyKey = e => {
     if (e.key === 'Enter') { e.preventDefault(); focusSearch(); }
   };
 
@@ -898,7 +898,7 @@ function OpeningStockModal({ onClose }) {
   const handleSubmit = async () => {
     for (const row of rows) {
       if (row.isNew && !row.name.trim()) { toast.error('Enter product name for each item'); return; }
-      if (!row.mrp || parseFloat(row.mrp) <= 0) { toast.error(`Enter selling price for "${row.name || 'item'}""`); return; }
+      if (!row.mrp || parseFloat(row.mrp) <= 0) { toast.error(`Enter selling price for "${row.name || 'item'}"`); return; }
       if (!row.quantity || parseFloat(row.quantity) <= 0) { toast.error(`Enter opening quantity for "${row.name || 'item'}"`); return; }
     }
     setLoading(true);

@@ -24,7 +24,7 @@ from .serializers import (
     ReturnItemSerializer, InternalSaleMasterSerializer, InternalSaleSerializer,
     InternalSaleBillSerializer, PurchaseReturnSerializer, DirectSaleMasterSerializer,
     DirectSaleSerializer, StockAdjustmentRequestSerializer, StockTransferSerializer,
-    UserPermissionSerializer, ItemReturnSerializer
+    UserPermissionSerializer, ItemReturnSerializer, PhysicalStockRequestSerializer
 )
 from .permissions import IsAdminUser
 from .kc_views import (
@@ -337,8 +337,16 @@ class PurchaseBillViewSet(viewsets.ModelViewSet):
 
 
 class SaleBillViewSet(viewsets.ModelViewSet):
-    queryset           = SaleBill.objects.all().order_by('-created_at')
+    queryset           = SaleBill.objects.none()  
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs        = SaleBill.objects.all().order_by('-created_at')
+        date_from = self.request.query_params.get('date_from')
+        date_to   = self.request.query_params.get('date_to')
+        if date_from: qs = qs.filter(created_at__date__gte=date_from)
+        if date_to:   qs = qs.filter(created_at__date__lte=date_to)
+        return qs
 
     def get_serializer_class(self):
         if self.action == 'list': return SaleBillListSerializer
@@ -749,6 +757,28 @@ class DirectSaleViewSet(viewsets.ModelViewSet):
         sale_number = DirectSale.generate_sale_number()
         serializer.save(created_by=self.request.user, sale_number=sale_number)
 
+
+    @action(detail=True, methods=['patch'])
+    def edit_payment(self, request, pk=None):
+        sale         = self.get_object()
+        payment_type = request.data.get('payment_type')
+        cash_amount  = float(request.data.get('cash_amount', 0))
+        card_amount  = float(request.data.get('card_amount', 0))
+        upi_amount   = float(request.data.get('upi_amount',  0))
+        if payment_type not in ['cash', 'card', 'upi', 'cash_card', 'cash_upi']:
+            return Response({'error': 'Invalid payment type.'}, status=400)
+        sale.payment_type = payment_type
+        sale.cash_amount  = cash_amount
+        sale.card_amount  = card_amount
+        sale.upi_amount   = upi_amount
+        sale.save()
+        return Response(DirectSaleSerializer(sale).data)
+    
+    def destroy(self, request, *args, **kwargs):
+        sale = self.get_object()
+        sale.delete()
+        return Response({'message': 'Direct sale deleted'}, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=['get'])
     def report(self, request):
         date_from = request.query_params.get('date_from')
@@ -798,28 +828,38 @@ class StockAdjustmentRequestViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['patch'])
     def approve(self, request, pk=None):
-        adj = self.get_object()
-        if adj.status != 'pending':
-            return Response({'error': 'Already reviewed'}, status=400)
-        product = adj.product
-        new_qty = Decimal(str(adj.physical_stock))
-        product.stock_quantity = new_qty
-        product.save()
-        old_total = sum(
-            Decimal(str(b.quantity))
-            for b in StockBatch.objects.filter(product=product, quantity__gt=0)
-        )
-        if old_total > 0:
-            ratio = new_qty / old_total
-            for b in StockBatch.objects.filter(product=product):
-                b.quantity = (Decimal(str(b.quantity)) * ratio).quantize(Decimal('0.001'))
-                b.save()
-        elif new_qty > 0:
-            StockBatch.objects.create(product=product, mrp=product.selling_price, quantity=new_qty)
-        adj.status      = 'approved'
-        adj.reviewed_by = request.user
-        adj.reviewed_at = timezone.now()
-        adj.save()
+        from django.db import transaction as db_transaction
+
+        with db_transaction.atomic():
+            adj = self.get_object()
+            if adj.status != 'pending':
+                return Response({'error': 'Already reviewed'}, status=400)
+            product   = adj.product
+            new_qty   = Decimal(str(adj.physical_stock))
+            batches   = list(StockBatch.objects.filter(product=product))
+            old_total = sum(Decimal(str(b.quantity)) for b in batches) or Decimal('0')
+
+            if old_total > 0:
+                ratio   = new_qty / old_total
+                running = Decimal('0')
+                for i, b in enumerate(batches):
+                    if i == len(batches) - 1:
+                        b.quantity = new_qty - running  # absorb rounding remainder
+                    else:
+                        b.quantity = (Decimal(str(b.quantity)) * ratio).quantize(Decimal('0.001'))
+                        running += b.quantity
+                    b.save()
+            elif new_qty > 0:
+                StockBatch.objects.create(product=product, mrp=product.selling_price, quantity=new_qty)
+            else:
+                StockBatch.objects.filter(product=product).update(quantity=Decimal('0'))
+
+            product.stock_quantity = new_qty
+            product.save()
+            adj.status      = 'approved'
+            adj.reviewed_by = request.user
+            adj.reviewed_at = timezone.now()
+            adj.save()
         return Response(StockAdjustmentRequestSerializer(adj).data)
 
     @action(detail=True, methods=['patch'])
@@ -1805,11 +1845,11 @@ class InternalSaleBillViewSet(viewsets.ModelViewSet):
 class PhysicalStockRequestViewSet(viewsets.ModelViewSet):
     queryset           = PhysicalStockRequest.objects.all().order_by('-created_at')
     permission_classes = [IsAuthenticated]
-    serializer_class   = StockAdjustmentRequestSerializer
+    serializer_class   = PhysicalStockRequestSerializer
 
     def list(self, request):
         qs = PhysicalStockRequest.objects.prefetch_related(
-            'items__product', 'requested_by', 'reviewed_by'
+            'items__product', 'items__batch', 'requested_by', 'reviewed_by'
         ).order_by('-created_at')
         result = []
         for ps in qs:
@@ -1821,6 +1861,8 @@ class PhysicalStockRequestViewSet(viewsets.ModelViewSet):
                     'product_name':    item.product.name,
                     'product_barcode': item.product.barcode,
                     'mrp':             float(item.product.selling_price),
+                    'batch_id':        item.batch_id,
+                    'batch_mrp':       float(item.batch.mrp) if item.batch_id else None,
                     'selling_unit':    item.product.selling_unit,
                     'system_stock':    float(item.system_stock),
                     'physical_stock':  float(item.physical_stock),
@@ -1841,75 +1883,125 @@ class PhysicalStockRequestViewSet(viewsets.ModelViewSet):
         return Response(result)
 
     def create(self, request):
+        from django.db import transaction as db_transaction
         items_data = request.data.get('items', [])
         reason     = request.data.get('reason', '')
         if not items_data:
             return Response({'error': 'No items provided'}, status=400)
-        ps = PhysicalStockRequest.objects.create(
-            reason=reason,
-            requested_by=request.user,
-        )
-        for item in items_data:
-            StockAdjustmentRequest.objects.create(
-                ps_request=ps,
-                product_id=item['product'],
-                system_stock=item['system_stock'],
-                physical_stock=item['physical_stock'],
+        with db_transaction.atomic():
+            ps = PhysicalStockRequest.objects.create(
                 reason=reason,
                 requested_by=request.user,
             )
+            for item in items_data:
+                product  = Product.objects.get(pk=item['product'])
+                batch_id = item.get('batch_id') or None
+                batch    = None
+                if batch_id:
+                    try:
+                        batch        = StockBatch.objects.get(pk=batch_id, product=product)
+                        system_stock = batch.quantity
+                    except StockBatch.DoesNotExist:
+                        system_stock = product.stock_quantity
+                else:
+                    system_stock = product.stock_quantity
+                StockAdjustmentRequest.objects.create(
+                    ps_request=ps,
+                    product=product,
+                    batch=batch,
+                    system_stock=system_stock,
+                    physical_stock=item['physical_stock'],
+                    reason=reason,
+                    requested_by=request.user,
+                )
         return Response({'id': ps.id, 'request_number': ps.request_number}, status=201)
 
     @action(detail=True, methods=['patch'])
     def approve(self, request, pk=None):
+        from django.db import transaction as db_transaction
         from django.db.models import Sum as DSum
 
-        ps = PhysicalStockRequest.objects.get(pk=pk)
-        if ps.status != 'pending':
-            return Response({'error': 'Already processed'}, status=400)
+        with db_transaction.atomic():
+            ps = PhysicalStockRequest.objects.select_for_update().get(pk=pk)
+            if ps.status != 'pending':
+                return Response({'error': 'Already processed'}, status=400)
 
-        ps.status      = 'approved'
-        ps.reviewed_by = request.user
-        ps.reviewed_at = timezone.now()
-        ps.save()
+            ps.status      = 'approved'
+            ps.reviewed_by = request.user
+            ps.reviewed_at = timezone.now()
+            ps.save()
 
-        for item in ps.items.all():
-            item.status      = 'approved'
-            item.reviewed_by = request.user
-            item.reviewed_at = timezone.now()
-            item.save()
+            for item in ps.items.all():
+                item.status      = 'approved'
+                item.reviewed_by = request.user
+                item.reviewed_at = timezone.now()
+                item.save()
 
-            product  = item.product
-            new_qty  = Decimal(str(item.physical_stock))
+                product = item.product
+                new_qty = Decimal(str(item.physical_stock))
 
-            old_total = StockBatch.objects.filter(
-                product=product
-            ).aggregate(t=DSum('quantity'))['t'] or Decimal('0')
-
-            if old_total > 0:
-                ratio = new_qty / old_total
-                for b in StockBatch.objects.filter(product=product):
-                    b.quantity = (Decimal(str(b.quantity)) * ratio).quantize(Decimal('0.001'))
-                    b.save()
-            elif new_qty > 0:
-                existing = StockBatch.objects.filter(product=product).first()
-                if existing:
-                    StockBatch.objects.filter(product=product).update(quantity=Decimal('0'))
-                    existing.quantity = new_qty
-                    existing.save()
-                else:
-                    StockBatch.objects.create(
-                        product=product,
-                        mrp=product.selling_price,
-                        quantity=new_qty
+                if item.batch_id:
+                    # Batch-specific: only update the counted batch, then resum product total
+                    item.batch.quantity = new_qty
+                    item.batch.save()
+                    product.stock_quantity = (
+                        StockBatch.objects.filter(product=product)
+                        .aggregate(t=DSum('quantity'))['t'] or Decimal('0')
                     )
-            else:
-                StockBatch.objects.filter(product=product).update(quantity=Decimal('0'))
+                    product.save()
+                else:
+                    # Product-level: scale all batches proportionally
+                    batches   = list(StockBatch.objects.filter(product=product))
+                    old_total = sum(Decimal(str(b.quantity)) for b in batches) or Decimal('0')
 
-            product.stock_quantity = new_qty
-            product.save()
+                    if old_total > 0:
+                        ratio   = new_qty / old_total
+                        running = Decimal('0')
+                        for i, b in enumerate(batches):
+                            if i == len(batches) - 1:
+                                b.quantity = new_qty - running  # absorb rounding remainder
+                            else:
+                                b.quantity = (Decimal(str(b.quantity)) * ratio).quantize(Decimal('0.001'))
+                                running += b.quantity
+                            b.save()
+                    elif new_qty > 0:
+                        existing = StockBatch.objects.filter(product=product).first()
+                        if existing:
+                            StockBatch.objects.filter(product=product).update(quantity=Decimal('0'))
+                            existing.quantity = new_qty
+                            existing.save()
+                        else:
+                            StockBatch.objects.create(
+                                product=product,
+                                mrp=product.selling_price,
+                                quantity=new_qty,
+                            )
+                    else:
+                        StockBatch.objects.filter(product=product).update(quantity=Decimal('0'))
+
+                    product.stock_quantity = new_qty
+                    product.save()
 
         return Response({'status': 'approved'})
+
+    @action(detail=True, methods=['patch'])
+    def reject(self, request, pk=None):
+        from django.db import transaction as db_transaction
+
+        with db_transaction.atomic():
+            ps = PhysicalStockRequest.objects.select_for_update().get(pk=pk)
+            if ps.status != 'pending':
+                return Response({'error': 'Already processed'}, status=400)
+            ps.status      = 'rejected'
+            ps.reviewed_by = request.user
+            ps.reviewed_at = timezone.now()
+            ps.save()
+            ps.items.all().update(
+                status='rejected',
+                reviewed_by=request.user,
+                reviewed_at=timezone.now(),
+            )
+        return Response({'status': 'rejected'})
 
 
 class SyncStockView(APIView):
@@ -1946,4 +2038,165 @@ class SyncStockView(APIView):
         return Response({
             'fixed':   len(fixed),
             'details': fixed,
+        })
+
+
+# ── Profit & Loss Report ───────────────────────────────────────────────────────
+
+class ProfitLossView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        import datetime as dt
+
+        date_from_str = request.query_params.get('date_from')
+        date_to_str   = request.query_params.get('date_to')
+
+        def parse_date(s, end_of_day=False):
+            if not s:
+                return None
+            d = dt.datetime.strptime(s, '%Y-%m-%d')
+            if end_of_day:
+                d = d.replace(hour=23, minute=59, second=59, microsecond=999999)
+            return timezone.make_aware(d)
+
+        date_from = parse_date(date_from_str)
+        date_to   = parse_date(date_to_str, end_of_day=True)
+
+        def date_filter(qs, field):
+            if date_from: qs = qs.filter(**{f'{field}__gte': date_from})
+            if date_to:   qs = qs.filter(**{f'{field}__lte': date_to})
+            return qs
+
+        # Average purchase cost for a product (fallback when batch has no cost)
+        avg_cost_cache = {}
+        def get_avg_cost(product_id):
+            if product_id not in avg_cost_cache:
+                rows = Purchase.objects.filter(product_id=product_id)
+                tot_cost = sum(Decimal(str(r.purchase_price)) * Decimal(str(r.quantity)) for r in rows)
+                tot_qty  = sum(Decimal(str(r.quantity)) for r in rows)
+                avg_cost_cache[product_id] = (tot_cost / tot_qty).quantize(Decimal('0.01')) if tot_qty > 0 else Decimal('0')
+            return avg_cost_cache[product_id]
+
+        def get_cost_price(product_id, batch):
+            if batch and Decimal(str(batch.purchase_price)) > 0:
+                return Decimal(str(batch.purchase_price))
+            return get_avg_cost(product_id)
+
+        def ex_tax(price, tax_rate):
+            """Convert tax-inclusive selling price to tax-exclusive (base) price."""
+            t = Decimal(str(tax_rate))
+            return price / (1 + t / 100) if t > 0 else price
+
+        # ── 1. Gross Sales & COGS ────────────────────────────────────────────
+        sale_items = list(
+            date_filter(
+                SaleItem.objects.select_related('batch', 'product'),
+                'bill__created_at',
+            )
+        )
+        gross_sales = Decimal('0')
+        total_cogs  = Decimal('0')
+        for si in sale_items:
+            qty         = Decimal(str(si.quantity))
+            gross_sales += qty * ex_tax(Decimal(str(si.price)), si.tax)
+            total_cogs  += qty * get_cost_price(si.product_id, si.batch)
+
+        # ── 2. Customer Returns (revenue & COGS both reversed) ──────────────
+        cust_ret_lines = list(
+            date_filter(
+                ItemReturnLine.objects.filter(return_type='customer_return')
+                    .select_related('item_return', 'product'),
+                'item_return__date',
+            )
+        )
+        cust_ret_revenue = Decimal('0')
+        cust_ret_cogs    = Decimal('0')
+        for r in cust_ret_lines:
+            qty              = Decimal(str(r.quantity))
+            cust_ret_revenue += qty * ex_tax(Decimal(str(r.price)), r.product.tax)
+            cust_ret_cogs    += qty * get_avg_cost(r.product_id)
+
+        # ── 3. Purchase Returns refund (reduces cost) ────────────────────────
+        pur_ret_refund = sum(
+            (Decimal(str(r.quantity)) * Decimal(str(r.purchase_price))
+             for r in date_filter(PurchaseReturn.objects.filter(status='returned'), 'date')),
+            Decimal('0'),
+        )
+
+        # ── 4. Damaged & Expired losses ──────────────────────────────────────
+        def stock_loss_from_returns(return_type):
+            lines = list(
+                date_filter(
+                    ItemReturnLine.objects.filter(return_type=return_type)
+                        .select_related('item_return', 'product'),
+                    'item_return__date',
+                )
+            )
+            return sum(
+                (Decimal(str(r.quantity)) * get_avg_cost(r.product_id) for r in lines),
+                Decimal('0'),
+            )
+
+        damaged_loss = stock_loss_from_returns('damaged')
+        expired_loss = stock_loss_from_returns('expired')
+
+        # ── 5. Physical Stock Adjustments ────────────────────────────────────
+        ps_items = list(
+            date_filter(
+                StockAdjustmentRequest.objects.filter(status='approved')
+                    .select_related('product', 'batch'),
+                'reviewed_at',
+            )
+        )
+        ps_loss    = Decimal('0')
+        ps_gain    = Decimal('0')
+        ps_details = []
+        for adj in ps_items:
+            diff    = Decimal(str(adj.physical_stock)) - Decimal(str(adj.system_stock))
+            cost_pp = get_cost_price(adj.product_id, adj.batch)
+            value   = abs(diff) * cost_pp
+            if diff < 0:
+                ps_loss += value
+                ps_details.append({'product': adj.product.name, 'diff': float(diff), 'cost_price': float(cost_pp), 'value': float(value), 'type': 'loss'})
+            elif diff > 0:
+                ps_gain += value
+                ps_details.append({'product': adj.product.name, 'diff': float(diff), 'cost_price': float(cost_pp), 'value': float(value), 'type': 'gain'})
+
+        # ── Final numbers ────────────────────────────────────────────────────
+        net_revenue  = gross_sales    - cust_ret_revenue
+        net_cogs     = total_cogs     - cust_ret_cogs - pur_ret_refund
+        gross_profit = net_revenue    - net_cogs
+        net_profit   = gross_profit   - damaged_loss - expired_loss - ps_loss + ps_gain
+
+        def pct(num, denom):
+            return round(float(num / denom * 100), 1) if denom > 0 else 0.0
+
+        def f2(v):
+            return float(v.quantize(Decimal('0.01')))
+
+        return Response({
+            'period': {'from': date_from_str, 'to': date_to_str},
+            'revenue': {
+                'gross_sales':      f2(gross_sales),
+                'customer_returns': f2(cust_ret_revenue),
+                'net_revenue':      f2(net_revenue),
+            },
+            'cost': {
+                'total_cogs':              f2(total_cogs),
+                'customer_returns_cogs':   f2(cust_ret_cogs),
+                'purchase_returns_refund': f2(pur_ret_refund),
+                'net_cogs':                f2(net_cogs),
+            },
+            'gross_profit':     f2(gross_profit),
+            'gross_margin_pct': pct(gross_profit, net_revenue),
+            'adjustments': {
+                'damaged_loss':        f2(damaged_loss),
+                'expired_loss':        f2(expired_loss),
+                'physical_stock_loss': f2(ps_loss),
+                'physical_stock_gain': f2(ps_gain),
+            },
+            'net_profit':     f2(net_profit),
+            'net_margin_pct': pct(net_profit, net_revenue),
+            'physical_stock_details': ps_details,
         })

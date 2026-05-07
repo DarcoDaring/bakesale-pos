@@ -115,7 +115,7 @@ export const getPurchaseReport    = params => api.get('/purchases/report/', { pa
 export const getPurchaseTaxReport = params => api.get('/purchases/purchase_tax_report/', { params });
 
 export const createBill        = d       => api.post('/bills/', d);
-export const getBills          = ()      => api.get('/bills/');
+export const getBills = (params = {}) => api.get('/bills/', { params });
 export const getBill           = id      => api.get(`/bills/${id}/`);
 export const getSaleReport     = params  => api.get('/bills/sale_report/',      { params });
 export const getItemWiseReport = params  => api.get('/bills/item_wise_report/', { params });
@@ -185,3 +185,9 @@ export const approvePhysicalStockRequest = id => api.patch(`/physical-stock-requ
 export const rejectPhysicalStockRequest  = id => api.patch(`/physical-stock-requests/${id}/reject/`, {});
 
 export const syncStock = () => api.post('/sync-stock/', { confirm: 'SYNC_CONFIRMED' });
+
+
+export const editDirectSalePayment = (id, d) => api.patch(`/direct-sales/${id}/edit_payment/`, d);
+export const deleteDirectSale      = id      => api.delete(`/direct-sales/${id}/`);
+
+export const getProfitLoss = params => api.get('/profit-loss/', { params });

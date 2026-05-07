@@ -8,10 +8,12 @@ import {
   getSalesTaxReport, getPurchaseTaxReport, markPurchasePaid,
   getDirectSaleReport,
   getItemReturnReport, getInternalSaleBillReport,
+  getProfitLoss,
 } from '../services/api';
 import { usePermissions } from '../context/PermissionContext';
 
 const fmt = n => `₹${parseFloat(n || 0).toFixed(2)}`;
+const fmtDate = d => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 const payLabel = { cash: 'Cash', card: 'Card', upi: 'UPI', cash_card: 'Cash & Card', cash_upi: 'Cash & UPI' };
 const today = () => new Date().toISOString().split('T')[0];
 
@@ -187,28 +189,74 @@ function PurchaseBillDetailModal({ billId, onClose }) {
 
 function PendingReturnsModal({ returns, onClose }) {
   const pending = (returns || []).filter(r => r.status === 'pending');
+
   return (
-    <div className="modal-overlay"><div className="modal" style={{ maxWidth: 700 }}>
+    <div className="modal-overlay"><div className="modal" style={{ maxWidth: 900, maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2 style={{ margin: 0 }}>⏳ Pending Purchase Returns ({pending.length})</h2>
         <button className="btn btn-secondary btn-sm" onClick={onClose}>✕</button>
       </div>
-      <table>
-        <thead><tr><th>Product</th><th>Vendor</th><th>Qty</th><th>Cost</th><th>Reason</th><th>Date</th></tr></thead>
-        <tbody>
-          {pending.map((r, i) => (
-            <tr key={i}>
-              <td style={{ fontWeight: 600 }}>{r.product_name}</td>
-              <td style={{ color: 'var(--text3)' }}>{r.vendor_name || '—'}</td>
-              <td><span className="badge badge-red">{r.quantity}</span></td>
-              <td style={{ fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--accent)' }}>{fmt(r.item_cost)}</td>
-              <td style={{ color: 'var(--text3)', fontSize: 12 }}>{r.reason || '—'}</td>
-              <td style={{ fontSize: 12, color: 'var(--text3)' }}>{new Date(r.date).toLocaleDateString()}</td>
+      <div style={{ overflowY: 'auto' }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Return No</th>
+              <th>Product</th>
+              <th>Vendor</th>
+              <th>Qty</th>
+              <th>Purchase Price</th>
+              <th>Tax</th>
+              <th>Total Cost</th>
+              <th>MRP</th>
+              <th>Reason</th>
+              <th>Date</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      {pending.length === 0 && <div className="empty-state"><div className="icon">✅</div>No pending returns</div>}
+          </thead>
+          <tbody>
+            {pending.map((r, i) => {
+              const purchasePrice = parseFloat(r.purchase_price || 0);
+              const tax           = parseFloat(r.tax || 0);
+              const qty           = parseFloat(r.quantity || 0);
+              const totalCost     = purchasePrice * (1 + tax / 100) * qty;
+              return (
+                <tr key={i}>
+                  <td>
+                    {r.return_number
+                      ? <span className="badge badge-orange" style={{ fontFamily: 'var(--mono)' }}>{r.return_number}</span>
+                      : <span style={{ color: 'var(--text3)' }}>—</span>}
+                  </td>
+                  <td style={{ fontWeight: 600 }}>{r.product_name}</td>
+                  <td style={{ color: 'var(--text3)' }}>{r.vendor_name || '—'}</td>
+                  <td><span className="badge badge-red">{r.quantity}</span></td>
+                  <td style={{ fontFamily: 'var(--mono)' }}>{fmt(purchasePrice)}</td>
+                  <td style={{ fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{tax}%</td>
+                  <td style={{ fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--accent)' }}>{fmt(totalCost)}</td>
+                  <td style={{ fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{fmt(r.mrp || 0)}</td>
+                  <td style={{ color: 'var(--text3)', fontSize: 12 }}>{r.reason || '—'}</td>
+                  <td style={{ fontSize: 12, color: 'var(--text3)' }}>{fmtDate(r.date)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+          {pending.length > 0 && (
+            <tfoot>
+              <tr>
+                <td colSpan={6} style={{ fontWeight: 800, textAlign: 'right' }}>Grand Total Cost</td>
+                <td style={{ fontFamily: 'var(--mono)', fontWeight: 800, color: 'var(--accent)' }}>
+                  {fmt(pending.reduce((s, r) => {
+                    const pp  = parseFloat(r.purchase_price || 0);
+                    const tax = parseFloat(r.tax || 0);
+                    const qty = parseFloat(r.quantity || 0);
+                    return s + pp * (1 + tax / 100) * qty;
+                  }, 0))}
+                </td>
+                <td colSpan={3}></td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+        {pending.length === 0 && <div className="empty-state"><div className="icon">✅</div>No pending returns</div>}
+      </div>
     </div></div>
   );
 }
@@ -367,6 +415,7 @@ export default function Reports() {
   const [purTaxData,     setPurTaxData]     = useState(null);
   const [directData,     setDirectData]     = useState(null);
   const [itemReturnData, setItemReturnData] = useState({ returns: [], grand_total: 0 });
+  const [plData,         setPlData]         = useState(null);
   const [masters,        setMasters]        = useState([]);
   const [selDests,       setSelDests]       = useState([]);
   const [loading,        setLoading]        = useState(false);
@@ -408,6 +457,7 @@ export default function Reports() {
   const [showInternalPrint, setShowInternalPrint] = useState(false);
   const [showDirectPrint,   setShowDirectPrint]   = useState(false);
   const [showIRPrint,       setShowIRPrint]       = useState(false);
+  const [showPLPrint,       setShowPLPrint]       = useState(false);
 
   useEffect(() => { getInternalMasters().then(r => setMasters(r.data)); }, []);
 
@@ -420,6 +470,8 @@ export default function Reports() {
     if (tab === 'direct')     fetchReport('direct');
     if (tab === 'itemreturn') fetchReport('itemreturn');
     if (tab === 'internal')   fetchReport('internal');
+    if (tab === 'itemwise')   fetchReport('itemwise');
+    if (tab === 'pl')         fetchReport('pl');
   }, [tab]);
 
   useEffect(() => { if (tab === 'internal') fetchReport('internal'); }, [selDests]);
@@ -473,6 +525,7 @@ export default function Reports() {
         setPurRetData({
           ...rangeRes.data,
           pending_count: allRes.data.pending_count,
+          all_returns: allRes.data.returns,
         }); 
       } else if (activeTab === 'purchase') {
         const { data } = await getPurchaseReport(params);
@@ -492,6 +545,9 @@ export default function Reports() {
       } else if (activeTab === 'itemreturn') {
         const { data } = await getItemReturnReport(params);
         setItemReturnData(data);
+      } else if (activeTab === 'pl') {
+        const { data } = await getProfitLoss(params);
+        setPlData(data);
       }
     } catch {}
     setLoading(false);
@@ -727,7 +783,7 @@ export default function Reports() {
     try {
       const { data } = await getItemReturnReport({ date_from: from, date_to: to });
       setShowIRPrint(false);
-      const rows = (data.returns||[]).map((r,i)=>`<tr style="background:${i%2===0?'#fff':'#fafafa'}"><td style="border:1px solid #ccc;padding:6px;font-weight:600;font-family:monospace">${r.return_number}</td><td style="border:1px solid #ccc;padding:6px">${new Date(r.date).toLocaleDateString()}</td><td style="border:1px solid #ccc;padding:6px">${payLabel[r.payment_type]||r.payment_type}</td><td style="border:1px solid #ccc;padding:6px;text-align:right;font-weight:700">${fmt(r.total_amount)}</td></tr>`).join('');
+      const rows = (data.returns||[]).map((r,i)=>`<tr style="background:${i%2===0?'#fff':'#fafafa'}"><td style="border:1px solid #ccc;padding:6px;font-weight:600;font-family:monospace">${r.return_number}</td><td style="border:1px solid #ccc;padding:6px">${fmtDate(r.date)}</td><td style="border:1px solid #ccc;padding:6px">${payLabel[r.payment_type]||r.payment_type}</td><td style="border:1px solid #ccc;padding:6px;text-align:right;font-weight:700">${fmt(r.total_amount)}</td></tr>`).join('');
       const html = `<div style="font-family:Arial,sans-serif;font-size:13px;color:#000;background:#fff;padding:32px">
         <div style="text-align:center;margin-bottom:24px"><div style="font-size:22px;font-weight:800">BAKESALE</div>
         <div>Item Return Report — ${from} to ${to}</div></div>
@@ -772,6 +828,98 @@ export default function Reports() {
         </table></div>`;
       showPreview(html, `Direct Sale Report ${from} to ${to}`);
     } catch { alert('Failed to load report'); }
+  };
+
+  const handlePLPrint = async (from, to) => {
+    try {
+      const { data: pl } = await getProfitLoss({ date_from: from, date_to: to });
+      setShowPLPrint(false);
+      const th = `border:1px solid #ccc;padding:8px 10px;background:#f0f0f0;text-align:left`;
+      const td = `border:1px solid #ccc;padding:7px 10px`;
+      const tdr = `border:1px solid #ccc;padding:7px 10px;text-align:right;font-family:monospace`;
+      const section = (label, color) =>
+        `<tr style="background:${color}"><td colspan="2" style="${td};font-weight:700;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:${color === '#f0f7ff' ? '#1d4ed8' : color === '#fff5f5' ? '#b91c1c' : '#854d0e'}">${label}</td></tr>`;
+      const row = (label, value, bold, indent, color) => {
+        const sign = value < 0 ? '−' : '';
+        const abs  = Math.abs(value).toFixed(2);
+        return `<tr><td style="${td};padding-left:${indent ? 28 : 10}px;${bold ? 'font-weight:700;font-size:14px' : 'font-size:12px'}">${label}</td>
+          <td style="${tdr};${bold ? 'font-weight:700;font-size:14px;' : 'font-size:12px;'}color:${color || '#000'}">${sign}₹${abs}</td></tr>`;
+      };
+      const psRows = (pl.physical_stock_details || []).map((d, i) =>
+        `<tr style="background:${i%2===0?'#fff':'#fafafa'}">
+          <td style="${td}">${d.product}</td>
+          <td style="${tdr}">${d.diff > 0 ? '+' : ''}${d.diff.toFixed(3)}</td>
+          <td style="${tdr}">₹${d.cost_price.toFixed(2)}</td>
+          <td style="${tdr};color:${d.type==='loss'?'#dc2626':'#16a34a'};font-weight:700">₹${d.value.toFixed(2)}</td>
+          <td style="${td};color:${d.type==='loss'?'#dc2626':'#16a34a'}">${d.type==='loss'?'Loss':'Gain'}</td>
+        </tr>`
+      ).join('');
+      const html = `<div style="font-family:Arial,sans-serif;font-size:13px;color:#000;background:#fff;padding:32px;max-width:700px;margin:0 auto">
+        <div style="text-align:center;margin-bottom:24px">
+          <div style="font-size:24px;font-weight:800;letter-spacing:2px">BAKESALE</div>
+          <div style="font-size:15px;margin-top:4px;font-weight:600">Profit &amp; Loss Report</div>
+          <div style="font-size:12px;color:#555;margin-top:2px">${from} to ${to}</div>
+          <div style="font-size:11px;color:#999;margin-top:2px">Printed: ${new Date().toLocaleString()}</div>
+          <div style="margin-top:8px;display:inline-block;background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:4px 10px;font-size:11px;color:#1d4ed8">All amounts are excluding GST &mdash; Revenue shown at base price (MRP &divide; (1 + GST%)). COGS at purchase price (ex-tax).</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px">
+          <div style="border:1px solid #ddd;border-radius:6px;padding:12px;text-align:center">
+            <div style="font-size:11px;color:#888;margin-bottom:4px">NET REVENUE</div>
+            <div style="font-size:18px;font-weight:800">₹${pl.revenue.net_revenue.toFixed(2)}</div>
+          </div>
+          <div style="border:1px solid #ddd;border-radius:6px;padding:12px;text-align:center">
+            <div style="font-size:11px;color:#888;margin-bottom:4px">GROSS PROFIT</div>
+            <div style="font-size:18px;font-weight:800;color:${pl.gross_profit>=0?'#16a34a':'#dc2626'}">₹${Math.abs(pl.gross_profit).toFixed(2)}</div>
+            <div style="font-size:10px;color:#888">${pl.gross_margin_pct}% margin</div>
+          </div>
+          <div style="border:1px solid ${pl.net_profit>=0?'#16a34a':'#dc2626'};border-radius:6px;padding:12px;text-align:center">
+            <div style="font-size:11px;color:#888;margin-bottom:4px">${pl.net_profit>=0?'NET PROFIT':'NET LOSS'}</div>
+            <div style="font-size:18px;font-weight:800;color:${pl.net_profit>=0?'#16a34a':'#dc2626'}">₹${Math.abs(pl.net_profit).toFixed(2)}</div>
+            <div style="font-size:10px;color:#888">${pl.net_margin_pct}% margin</div>
+          </div>
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;margin-bottom:${psRows ? 20 : 0}px">
+          <thead><tr><th style="${th}">Item</th><th style="${th};text-align:right">Amount</th></tr></thead>
+          <tbody>
+            ${section('Revenue', '#f0f7ff')}
+            ${row('Gross Sales', pl.revenue.gross_sales, false, true, '#000')}
+            ${row('Less: Customer Returns', -pl.revenue.customer_returns, false, true, '#dc2626')}
+            ${row('Net Revenue', pl.revenue.net_revenue, true, false, '#1d4ed8')}
+            ${section('Cost of Goods Sold', '#fff5f5')}
+            ${row('Total COGS', pl.cost.total_cogs, false, true, '#000')}
+            ${row('Less: COGS from customer returns', -pl.cost.customer_returns_cogs, false, true, '#16a34a')}
+            ${row('Less: Purchase returns refund', -pl.cost.purchase_returns_refund, false, true, '#16a34a')}
+            ${row('Net COGS', pl.cost.net_cogs, true, false, '#b91c1c')}
+            <tr style="border-top:2px solid #333;background:#f9f9f9">
+              <td style="${td};font-weight:800;font-size:14px">Gross Profit</td>
+              <td style="${tdr};font-weight:800;font-size:14px;color:${pl.gross_profit>=0?'#16a34a':'#dc2626'}">${pl.gross_profit<0?'−':''}₹${Math.abs(pl.gross_profit).toFixed(2)}<br><span style="font-size:10px;font-weight:400">${pl.gross_margin_pct}% gross margin</span></td>
+            </tr>
+            ${section('Stock Adjustments & Losses', '#fefce8')}
+            ${row('Damaged stock written off', -pl.adjustments.damaged_loss, false, true, pl.adjustments.damaged_loss > 0 ? '#dc2626' : '#999')}
+            ${row('Expired stock written off', -pl.adjustments.expired_loss, false, true, pl.adjustments.expired_loss > 0 ? '#dc2626' : '#999')}
+            ${row('Physical stock loss', -pl.adjustments.physical_stock_loss, false, true, pl.adjustments.physical_stock_loss > 0 ? '#dc2626' : '#999')}
+            ${row('Physical stock gain', pl.adjustments.physical_stock_gain, false, true, pl.adjustments.physical_stock_gain > 0 ? '#16a34a' : '#999')}
+            <tr style="border-top:2px solid #333;background:${pl.net_profit>=0?'#f0fdf4':'#fff5f5'}">
+              <td style="${td};font-weight:800;font-size:15px">${pl.net_profit>=0?'NET PROFIT':'NET LOSS'}</td>
+              <td style="${tdr};font-weight:800;font-size:15px;color:${pl.net_profit>=0?'#16a34a':'#dc2626'}">${pl.net_profit<0?'−':''}₹${Math.abs(pl.net_profit).toFixed(2)}<br><span style="font-size:10px;font-weight:400">${pl.net_margin_pct}% net margin</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        ${psRows ? `<div style="margin-top:8px;font-weight:700;font-size:13px;margin-bottom:6px">Physical Stock Adjustment Detail</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr>
+            <th style="${th}">Product</th><th style="${th};text-align:right">Qty Diff</th>
+            <th style="${th};text-align:right">Cost Price</th><th style="${th};text-align:right">Value</th>
+            <th style="${th}">Type</th>
+          </tr></thead>
+          <tbody>${psRows}</tbody>
+        </table>` : ''}
+      </div>`;
+      showPreview(html, `P&L Report ${from} to ${to}`);
+    } catch { alert('Failed to generate P&L report'); }
   };
 
   const handlePurchasePrint = async (from, to) => {
@@ -823,7 +971,7 @@ export default function Reports() {
             <td style="border:1px solid #ccc;padding:6px">${r.quantity}</td>
             <td style="border:1px solid #ccc;padding:6px;font-weight:700">${fmt(r.item_cost)}</td>
             <td style="border:1px solid #ccc;padding:6px">${r.status==='returned'?'Returned':'Pending'}</td>
-            <td style="border:1px solid #ccc;padding:6px">${new Date(r.date).toLocaleDateString()}</td>
+            <td style="border:1px solid #ccc;padding:6px">${fmtDate(r.date)}</td>
           </tr>`).join('')}</tbody>
           <tfoot><tr style="background:#f0f0f0">
             <td colspan="3" style="border:1px solid #ccc;padding:7px;font-weight:800">TOTAL COST</td>
@@ -876,6 +1024,7 @@ export default function Reports() {
     { k: 'internal',   label: 'Internal Sale',      perm: 'can_view_internal_report' },
     { k: 'direct',     label: 'Direct Sale',        perm: 'can_view_direct_report' },
     { k: 'itemreturn', label: 'Item Return Report', perm: 'can_view_sale_report' },
+    { k: 'pl',         label: 'Profit & Loss',      perm: 'can_view_pl_report' },
   ];
   const TABS = ALL_TABS.filter(t => isAdmin || can(t.perm));
 
@@ -907,6 +1056,7 @@ export default function Reports() {
           {tab === 'internal'   && (isAdmin || can('can_print_reports')) && <button className="btn btn-secondary" onClick={() => setShowInternalPrint(true)}  style={{ color: 'var(--blue)',    borderColor: 'var(--blue)' }}>🖨️ Print</button>}
           {tab === 'direct'     && (isAdmin || can('can_print_reports')) && <button className="btn btn-secondary" onClick={() => setShowDirectPrint(true)}    style={{ color: 'var(--green)',   borderColor: 'var(--green)' }}>🖨️ Print</button>}
           {tab === 'itemreturn' && (isAdmin || can('can_print_reports')) && <button className="btn btn-secondary" onClick={() => setShowIRPrint(true)}         style={{ color: 'var(--red)',     borderColor: 'var(--red)' }}>🖨️ Print</button>}
+          {tab === 'pl'        && (isAdmin || can('can_print_reports')) && <button className="btn btn-secondary" onClick={() => setShowPLPrint(true)}         style={{ color: 'var(--green)',   borderColor: 'var(--green)' }}>🖨️ Print</button>}
         </div>
       </div>
 
@@ -1090,47 +1240,103 @@ export default function Reports() {
 
           {/* ── Purchase Return ── */}
           {tab === 'purreturn' && (
-            <>
-              {purRetData && (
-                <div style={{ marginBottom: 20 }}>
-                  <div className="stat-card" style={{ maxWidth: 220, cursor: 'pointer', border: purRetData.pending_count > 0 ? '1px solid var(--yellow)' : undefined }} onClick={() => setShowPendingRet(true)}>
-                    <div className="label">⏳ Pending Returns</div>
-                    <div className="value" style={{ color: purRetData.pending_count > 0 ? 'var(--yellow)' : 'var(--text3)', fontSize: 28 }}>{purRetData.pending_count}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Click to view</div>
-                  </div>
-                </div>
-              )}
-              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                <table>
-                  <thead>
-                    <tr><th>Return No</th><th>Product</th><th>Vendor</th><th>MRP</th><th>Qty</th><th>Total</th><th>Reason</th><th>Date</th><th>Status</th><th></th></tr>
-                  </thead>
-                  <tbody>
-                    {(purRetData?.returns || []).map((r, i) => {
-                      const mrp   = parseFloat(r.mrp || 0);
-                      const qty   = parseFloat(r.quantity || 0);
-                      const total = mrp * qty;
-                      return (
-                        <tr key={i}>
-                          <td>{r.return_number ? <span className="badge badge-orange" style={{ fontFamily: 'var(--mono)' }}>{r.return_number}</span> : <span style={{ color: 'var(--text3)' }}>—</span>}</td>
-                          <td style={{ fontWeight: 600 }}>{r.product_name}<div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{r.product_barcode}</div></td>
-                          <td style={{ color: 'var(--text3)', fontSize: 13 }}>{r.vendor_name || '—'}</td>
-                          <td style={{ fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{fmt(mrp)}</td>
-                          <td><span className="badge badge-red">{r.quantity}</span></td>
-                          <td style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{fmt(total)}</td>
-                          <td style={{ color: 'var(--text3)', fontSize: 12 }}>{r.reason || '—'}</td>
-                          <td style={{ fontSize: 12, color: 'var(--text3)' }}>{new Date(r.date).toLocaleDateString()}</td>
-                          <td><span className={`badge ${r.status === 'returned' ? 'badge-green' : 'badge-yellow'}`}>{r.status === 'returned' ? '✅ Returned' : '⏳ Pending'}</span></td>
-                          <td>{r.status === 'pending' && <button className="btn btn-sm" style={{ color: 'var(--green)', borderColor: 'var(--green)', fontSize: 12 }} onClick={() => handleMarkReturned(r.id)} disabled={markingId === r.id}>{markingId === r.id ? '…' : '✅ Mark Returned'}</button>}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                {(!purRetData || purRetData.returns.length === 0) && <div className="empty-state"><div className="icon">↩️</div>No purchase returns in this period</div>}
+          <>
+          {purRetData && (
+            <div style={{ marginBottom: 20 }}>
+              <div className="stat-card" style={{ maxWidth: 220, cursor: 'pointer', border: purRetData.pending_count > 0 ? '1px solid var(--yellow)' : undefined }} onClick={() => setShowPendingRet(true)}>
+                <div className="label">⏳ Pending Returns</div>
+                <div className="value" style={{ color: purRetData.pending_count > 0 ? 'var(--yellow)' : 'var(--text3)', fontSize: 28 }}>{purRetData.pending_count}</div>
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Click to view</div>
               </div>
-            </>
+            </div>
           )}
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Return No</th>
+                  <th>Date</th>
+                  <th>Product</th>
+                  <th>Vendor</th>
+                  <th>MRP</th>
+                  <th>Qty</th>
+                  <th>Purchase Price</th>
+                  <th>Tax</th>
+                  <th>Total Cost</th>
+                  <th>Reason</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {(purRetData?.returns || []).map((r, i) => {
+                  const purchasePrice = parseFloat(r.purchase_price || 0);
+                  const tax           = parseFloat(r.tax || 0);
+                  const qty           = parseFloat(r.quantity || 0);
+                  const totalCost     = purchasePrice * (1 + tax / 100) * qty;
+                  return (
+                    <tr key={i}>
+                      <td>
+                        {r.return_number
+                          ? <span className="badge badge-orange" style={{ fontFamily: 'var(--mono)' }}>{r.return_number}</span>
+                          : <span style={{ color: 'var(--text3)' }}>—</span>}
+                      </td>
+                      <td style={{ fontSize: 12, color: 'var(--text3)' }}>{fmtDate(r.date)}</td>
+
+                      <td style={{ fontWeight: 600 }}>
+                        {r.product_name}
+                        <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{r.product_barcode}</div>
+                      </td>
+                      <td style={{ color: 'var(--text3)', fontSize: 13 }}>{r.vendor_name || '—'}</td>
+                      <td style={{ fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{fmt(r.mrp || 0)}</td>
+                      <td><span className="badge badge-red">{r.quantity}</span></td>
+                      <td style={{ fontFamily: 'var(--mono)' }}>{fmt(purchasePrice)}</td>
+                      <td style={{ fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{tax}%</td>
+                      <td style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{fmt(totalCost)}</td>
+                      <td style={{ color: 'var(--text3)', fontSize: 12 }}>{r.reason || '—'}</td>
+                      
+                      <td>
+                        <span className={`badge ${r.status === 'returned' ? 'badge-green' : 'badge-yellow'}`}>
+                          {r.status === 'returned' ? '✅ Returned' : '⏳ Pending'}
+                        </span>
+                      </td>
+                      <td>
+                        {r.status === 'pending' && (
+                          <button className="btn btn-sm"
+                            style={{ color: 'var(--green)', borderColor: 'var(--green)', fontSize: 12 }}
+                            onClick={() => handleMarkReturned(r.id)}
+                            disabled={markingId === r.id}>
+                            {markingId === r.id ? '…' : '✅ Mark Returned'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              {(purRetData?.returns || []).length > 0 && (
+                <tfoot>
+                  <tr style={{ background: 'var(--bg2)', fontWeight: 800 }}>
+                    <td colSpan={8} style={{ padding: '8px 12px', textAlign: 'right' }}>Grand Total Cost</td>
+                    <td style={{ padding: '8px 12px', fontFamily: 'var(--mono)', color: 'var(--accent)' }}>
+                      {fmt((purRetData?.returns || []).reduce((s, r) => {
+                        const pp  = parseFloat(r.purchase_price || 0);
+                        const tax = parseFloat(r.tax || 0);
+                        const qty = parseFloat(r.quantity || 0);
+                        return s + pp * (1 + tax / 100) * qty;
+                      }, 0))}
+                    </td>
+                    <td colSpan={4}></td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+            {(!purRetData || purRetData.returns.length === 0) && (
+              <div className="empty-state"><div className="icon">↩️</div>No purchase returns in this period</div>
+            )}
+          </div>
+        </>
+      )}
 
           {/* ── Purchase Report ── */}
           {tab === 'purchase' && purData && (
@@ -1159,7 +1365,7 @@ export default function Reports() {
                         </td>
                       </tr>
                     ))}
-                  </tbody>
+                  </tbody>  
                 </table>
               </div>
             </>
@@ -1350,14 +1556,7 @@ export default function Reports() {
           {/* ── Direct Sale ── */}
           {tab === 'direct' && (
             <>
-              {directData && directData.sales && directData.sales.length > 0 && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 20 }}>
-                  <div className="stat-card"><div className="label">Grand Total</div><div className="value" style={{ color: 'var(--accent)' }}>{fmt(directData.grand_total)}</div></div>
-                  <div className="stat-card"><div className="label">Cash</div><div className="value" style={{ color: 'var(--green)' }}>{fmt(directData.cash_total)}</div></div>
-                  <div className="stat-card"><div className="label">Card</div><div className="value" style={{ color: 'var(--blue)' }}>{fmt(directData.card_total)}</div></div>
-                  <div className="stat-card"><div className="label">UPI</div><div className="value" style={{ color: 'var(--purple)' }}>{fmt(directData.upi_total)}</div></div>
-                </div>
-              )}
+                
               <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                 <table>
                   <thead><tr><th>DS No</th><th>Date</th><th>Item Name</th><th>Amount</th><th>Payment</th><th>By</th></tr></thead>
@@ -1378,6 +1577,137 @@ export default function Reports() {
               </div>
             </>
           )}
+
+          {/* ── Profit & Loss Report ── */}
+          {tab === 'pl' && (
+            <>
+              {!plData ? (
+                <div className="empty-state"><div className="icon">💹</div>Click <b>Load</b> to generate the Profit &amp; Loss report</div>
+              ) : (() => {
+                const pl = plData;
+                const isProfit = pl.net_profit >= 0;
+                const Row = ({ label, value, bold, color, indent, borderTop }) => (
+                  <tr style={{ borderTop: borderTop ? '2px solid var(--border)' : undefined }}>
+                    <td style={{ paddingLeft: indent ? 28 : 12, color: 'var(--text2)', fontSize: indent ? 12 : 13, fontWeight: bold ? 700 : 400 }}>{label}</td>
+                    <td style={{ textAlign: 'right', fontFamily: 'var(--mono)', fontWeight: bold ? 700 : 500, color: color || 'var(--text1)', fontSize: indent ? 12 : 13, paddingRight: 12 }}>{fmt(value)}</td>
+                  </tr>
+                );
+                return (
+                  <div>
+                    {/* GST note */}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 6, padding: '5px 10px', marginBottom: 14, fontSize: 12, color: 'var(--accent)' }}>
+                      ℹ️ All amounts are <b style={{ marginLeft: 3 }}>excluding GST</b>. Revenue is shown at base price (MRP ÷ (1 + GST%)). COGS is purchase price (ex-tax). GST is a pass-through — collected from customer, remitted to government.
+                    </div>
+                    {/* Summary cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 20 }}>
+                      <div className="stat-card">
+                        <div className="label">Net Revenue</div>
+                        <div className="value" style={{ color: 'var(--accent)' }}>{fmt(pl.revenue.net_revenue)}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Gross: {fmt(pl.revenue.gross_sales)} — Returns: {fmt(pl.revenue.customer_returns)}</div>
+                      </div>
+                      <div className="stat-card">
+                        <div className="label">Gross Profit</div>
+                        <div className="value" style={{ color: pl.gross_profit >= 0 ? 'var(--green)' : 'var(--red)' }}>{fmt(pl.gross_profit)}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Margin: {pl.gross_margin_pct}%</div>
+                      </div>
+                      <div className="stat-card" style={{ borderColor: isProfit ? 'var(--green)' : 'var(--red)' }}>
+                        <div className="label">{isProfit ? '✅ Net Profit' : '❌ Net Loss'}</div>
+                        <div className="value" style={{ color: isProfit ? 'var(--green)' : 'var(--red)' }}>{fmt(Math.abs(pl.net_profit))}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Margin: {pl.net_margin_pct}%</div>
+                      </div>
+                    </div>
+
+                    {/* Detailed breakdown table */}
+                    <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 16 }}>
+                      <div style={{ padding: '10px 14px', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>📋 Detailed Breakdown — {pl.period.from} to {pl.period.to}</span>
+                        <span style={{ fontSize: 10, fontWeight: 500, color: 'var(--text3)', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 7px' }}>Amounts ex-GST</span>
+                      </div>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--bg2)' }}>
+                            <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 12, color: 'var(--text3)' }}>Item</th>
+                            <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 12, color: 'var(--text3)' }}>Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {/* Revenue */}
+                          <tr style={{ background: 'rgba(59,130,246,0.05)' }}>
+                            <td colSpan={2} style={{ padding: '6px 12px', fontWeight: 700, fontSize: 12, color: 'var(--blue)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Revenue</td>
+                          </tr>
+                          <Row label="Gross Sales" value={pl.revenue.gross_sales} indent />
+                          <Row label="Less: Customer Returns" value={-pl.revenue.customer_returns} indent color="var(--red)" />
+                          <Row label="Net Revenue" value={pl.revenue.net_revenue} bold color="var(--accent)" borderTop />
+
+                          {/* Cost */}
+                          <tr style={{ background: 'rgba(239,68,68,0.05)' }}>
+                            <td colSpan={2} style={{ padding: '6px 12px', fontWeight: 700, fontSize: 12, color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cost of Goods Sold</td>
+                          </tr>
+                          <Row label="Total COGS (purchase cost of items sold)" value={pl.cost.total_cogs} indent />
+                          <Row label="Less: COGS recovered from customer returns" value={-pl.cost.customer_returns_cogs} indent color="var(--green)" />
+                          <Row label="Less: Purchase Returns refund" value={-pl.cost.purchase_returns_refund} indent color="var(--green)" />
+                          <Row label="Net COGS" value={pl.cost.net_cogs} bold color="var(--red)" borderTop />
+
+                          {/* Gross Profit */}
+                          <Row label="GROSS PROFIT" value={pl.gross_profit} bold color={pl.gross_profit >= 0 ? 'var(--green)' : 'var(--red)'} borderTop />
+                          <tr><td colSpan={2} style={{ padding: '3px 12px', fontSize: 11, color: 'var(--text3)', paddingLeft: 28 }}>Gross Margin: {pl.gross_margin_pct}%</td></tr>
+
+                          {/* Adjustments */}
+                          <tr style={{ background: 'rgba(234,179,8,0.05)' }}>
+                            <td colSpan={2} style={{ padding: '6px 12px', fontWeight: 700, fontSize: 12, color: 'var(--yellow)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stock Adjustments &amp; Losses</td>
+                          </tr>
+                          <Row label="Damaged stock written off (at cost)" value={-pl.adjustments.damaged_loss} indent color={pl.adjustments.damaged_loss > 0 ? 'var(--red)' : 'var(--text3)'} />
+                          <Row label="Expired stock written off (at cost)" value={-pl.adjustments.expired_loss} indent color={pl.adjustments.expired_loss > 0 ? 'var(--red)' : 'var(--text3)'} />
+                          <Row label="Physical stock loss (at cost)" value={-pl.adjustments.physical_stock_loss} indent color={pl.adjustments.physical_stock_loss > 0 ? 'var(--red)' : 'var(--text3)'} />
+                          <Row label="Physical stock gain (at cost)" value={pl.adjustments.physical_stock_gain} indent color={pl.adjustments.physical_stock_gain > 0 ? 'var(--green)' : 'var(--text3)'} />
+
+                          {/* Net Profit */}
+                          <Row
+                            label={pl.net_profit >= 0 ? '✅ NET PROFIT' : '❌ NET LOSS'}
+                            value={pl.net_profit}
+                            bold color={pl.net_profit >= 0 ? 'var(--green)' : 'var(--red)'}
+                            borderTop
+                          />
+                          <tr><td colSpan={2} style={{ padding: '3px 12px', fontSize: 11, color: 'var(--text3)', paddingLeft: 28 }}>Net Margin: {pl.net_margin_pct}%</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Physical Stock Adjustments detail */}
+                    {pl.physical_stock_details && pl.physical_stock_details.length > 0 && (
+                      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                        <div style={{ padding: '10px 14px', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: 13 }}>
+                          📦 Physical Stock Adjustments Detail
+                        </div>
+                        <table>
+                          <thead>
+                            <tr><th>Product</th><th>Qty Diff</th><th>Cost Price</th><th>Value</th><th>Type</th></tr>
+                          </thead>
+                          <tbody>
+                            {pl.physical_stock_details.map((d, i) => (
+                              <tr key={i}>
+                                <td style={{ fontWeight: 600 }}>{d.product}</td>
+                                <td style={{ fontFamily: 'var(--mono)', color: d.type === 'loss' ? 'var(--red)' : 'var(--green)' }}>
+                                  {d.diff > 0 ? '+' : ''}{d.diff.toFixed(3)}
+                                </td>
+                                <td style={{ fontFamily: 'var(--mono)', color: 'var(--text2)' }}>{fmt(d.cost_price)}</td>
+                                <td style={{ fontFamily: 'var(--mono)', fontWeight: 700, color: d.type === 'loss' ? 'var(--red)' : 'var(--green)' }}>{fmt(d.value)}</td>
+                                <td>
+                                  {d.type === 'loss'
+                                    ? <span className="badge badge-red">🔴 Loss</span>
+                                    : <span className="badge badge-green">🟢 Gain</span>}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </>
+          )}
         </>
       )}
 
@@ -1391,8 +1721,9 @@ export default function Reports() {
       {showInternalPrint && <PrintModal title="Print Internal Sale Report"   onClose={() => setShowInternalPrint(false)} onPrint={handleInternalPrint} />}
       {showDirectPrint   && <PrintModal title="Print Direct Sale Report"     onClose={() => setShowDirectPrint(false)}  onPrint={handleDirectPrint} />}
       {showIRPrint       && <PrintModal title="Print Item Return Report"     onClose={() => setShowIRPrint(false)}       onPrint={handleItemReturnPrint} />}
+      {showPLPrint       && <PrintModal title="Print Profit & Loss Report"   onClose={() => setShowPLPrint(false)}       onPrint={handlePLPrint} />}
       {detailBillId      && <PurchaseBillDetailModal billId={detailBillId} onClose={() => setDetailBillId(null)} />}
-      {showPendingRet    && purRetData && <PendingReturnsModal returns={purRetData.returns} onClose={() => setShowPendingRet(false)} />}
+      {showPendingRet && purRetData && <PendingReturnsModal returns={purRetData.all_returns} onClose={() => setShowPendingRet(false)} />}
       {purListModal      && <PurchaseBillsListModal bills={purListModal.bills} title={purListModal.title} onClose={() => setPurListModal(null)} onViewDetail={id => { setPurListModal(null); setDetailBillId(id); }} />}
       {itemRetDetail     && <ItemReturnDetailModal ret={itemRetDetail} onClose={() => setItemRetDetail(null)} />}
       {intBillDetail     && <InternalSaleBillDetailModal bill={intBillDetail} onClose={() => setIntBillDetail(null)} />}

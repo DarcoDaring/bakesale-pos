@@ -35,5 +35,6 @@ router.register(r'kc-report',      KCReportView,        basename='kc-report')
 router.register(r'kc-closing-stock', KCClosingStockViewSet, basename='kc-closing-stock')
 urlpatterns = [
     path('', include(router.urls)),
-    path('backup/', views.BackupView.as_view(), name='backup'),
+    path('backup/',       views.BackupView.as_view(),       name='backup'),
+    path('profit-loss/',  views.ProfitLossView.as_view(),   name='profit-loss'),
 ]
