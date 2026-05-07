@@ -1,2 +1,11 @@
-cd /d "C:\Bakesale\backend"
-"C:\Bakesale\venv\Scripts\python.exe" manage.py migrate
+C:\Users\user>cd /d "C:\Bakesale\backend"
+
+C:\Bakesale\backend>"C:\Bakesale\venv\Scripts\python.exe" manage.py migrate
+Operations to perform:
+  Apply all migrations: admin, api, auth, contenttypes, sessions
+Running migrations:
+  No migrations to apply.
+  Your models in app(s): 'api' have changes that are not yet reflected in a migration, and so won't be applied.
+  Run 'manage.py makemigrations' to make new migrations, and then re-run 'manage.py migrate' to apply them.
+
+C:\Bakesale\backend>
