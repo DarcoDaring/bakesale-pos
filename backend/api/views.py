@@ -1142,6 +1142,7 @@ class BackupView(APIView):
                     StockBatch.objects.create(
                         id=r['id'], product_id=r['product_id'],
                         mrp=d(r['mrp']), quantity=d(r.get('quantity', 0)),
+                        purchase_price=d(r.get('purchase_price', 0)),
                     )
 
                 # ── Restore purchase bills ───────────────────────────────────
@@ -1336,6 +1337,7 @@ class BackupView(APIView):
                         id=r['id'],
                         ps_request_id=r.get('ps_request_id'),
                         product_id=r['product_id'],
+                        batch_id=r.get('batch_id'),
                         system_stock=d(r['system_stock']),
                         physical_stock=d(r['physical_stock']),
                         status=r.get('status', 'pending'),
