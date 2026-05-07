@@ -197,7 +197,16 @@ ipcMain.handle('get-default-printer', async () => {
 
 ipcMain.handle('silent-print', async (event, { html, printerName, options }) => {
   return new Promise((resolve, reject) => {
-    const printWin = new BrowserWindow({ show: false, webPreferences: { nodeIntegration: false, contextIsolation: true } });
+    // Set window width to match print page width so width:100% renders correctly.
+    // pageSize.width is in microns; convert to CSS pixels at 96dpi.
+    const pageWidthMicrons = options?.pageSize?.width || 80000;
+    const pageWidthPx = Math.ceil((pageWidthMicrons / 1000) / 25.4 * 96);
+    const printWin = new BrowserWindow({
+      show: false,
+      width: pageWidthPx,
+      height: 1200,
+      webPreferences: { nodeIntegration: false, contextIsolation: true },
+    });
     printWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
     printWin.webContents.on('did-finish-load', () => {
       printWin.webContents.print({ silent: true, printBackground: true, deviceName: printerName || '', ...options },

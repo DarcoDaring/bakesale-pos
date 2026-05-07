@@ -436,6 +436,9 @@ export default function Reports() {
   const [salesTaxAvailableRates, setSalesTaxAvailableRates] = useState([5, 12, 18, 28]);
   const [purTaxAvailableRates,   setPurTaxAvailableRates]   = useState([5, 12, 18, 28]);
 
+  const [purSearch,      setPurSearch]      = useState('');
+  const [purAllBills,    setPurAllBills]    = useState(null);
+  const [purAllLoading,  setPurAllLoading]  = useState(false);
   const [markingId,      setMarkingId]      = useState(null);
   const [markingPaidId,  setMarkingPaidId]  = useState(null);
   const [detailBillId,   setDetailBillId]   = useState(null);
@@ -479,6 +482,14 @@ export default function Reports() {
   // Re-fetch when tax rate filters change
   useEffect(() => { if (tab === 'salestax') fetchReport('salestax'); }, [salesTaxRateFilter]);
   useEffect(() => { if (tab === 'purtax')   fetchReport('purtax');   }, [purTaxRateFilter]);
+
+  // Load ALL purchase bills (no date filter) the first time the user types a search query
+  useEffect(() => {
+    if (tab === 'purchase' && purSearch.trim() && purAllBills === null && !purAllLoading) {
+      setPurAllLoading(true);
+      getPurchaseReport({}).then(r => setPurAllBills(r.data.bills || [])).catch(() => setPurAllBills([])).finally(() => setPurAllLoading(false));
+    }
+  }, [purSearch, purAllBills, purAllLoading, tab]);
 
   const fetchReport = async (overrideTab) => {
     const activeTab = overrideTab || tab;
@@ -1339,37 +1350,66 @@ export default function Reports() {
       )}
 
           {/* ── Purchase Report ── */}
-          {tab === 'purchase' && purData && (
-            <>
-              <div style={{ marginBottom: 16, display: 'flex', gap: 16 }}>
-                <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => setPurListModal({ bills: purData.bills.filter(b => !b.is_paid), title: '🔴 Unpaid Bills' })}>
-                  <div className="label">🔴 Not Paid</div>
-                  <div className="value" style={{ color: 'var(--red)', fontSize: 22 }}>{purData.bills.filter(b => !b.is_paid).length} bills</div>
-                  <div style={{ fontSize: 12, color: 'var(--text3)' }}>Click to view</div>
+          {tab === 'purchase' && purData && (() => {
+            const q = purSearch.trim().toLowerCase();
+            const sourceList = q ? (purAllBills || purData.bills || []) : (purData.bills || []);
+            const filteredPurBills = sourceList.filter(b =>
+              !q ||
+              (b.purchase_number || '').toLowerCase().includes(q) ||
+              (b.vendor_name     || '').toLowerCase().includes(q)
+            );
+            return (
+              <>
+                <div style={{ marginBottom: 16, display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                  <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => setPurListModal({ bills: purData.bills.filter(b => !b.is_paid), title: '🔴 Unpaid Bills' })}>
+                    <div className="label">🔴 Not Paid</div>
+                    <div className="value" style={{ color: 'var(--red)', fontSize: 22 }}>{purData.bills.filter(b => !b.is_paid).length} bills</div>
+                    <div style={{ fontSize: 12, color: 'var(--text3)' }}>Click to view</div>
+                  </div>
                 </div>
-              </div>
-              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                <table>
-                  <thead><tr><th>PO Number</th><th>Date</th><th>Vendor</th><th>Total</th><th>Payment</th><th></th></tr></thead>
-                  <tbody>
-                    {(purData.bills || []).map((b, i) => (
-                      <tr key={i}>
-                        <td><span className="badge badge-orange" style={{ fontFamily: 'var(--mono)' }}>{b.purchase_number}</span></td>
-                        <td style={{ fontSize: 12, color: 'var(--text3)' }}>{new Date(b.date).toLocaleDateString()}</td>
-                        <td style={{ fontWeight: 600 }}>{b.vendor_name}</td>
-                        <td style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{fmt(b.total_value)}</td>
-                        <td><span className={`badge ${b.is_paid ? 'badge-green' : 'badge-red'}`}>{b.is_paid ? '✅ Paid' : '🔴 Not Paid'}</span></td>
-                        <td style={{ display: 'flex', gap: 6 }}>
-                          <button className="btn btn-secondary btn-sm" onClick={() => setDetailBillId(b.id)}>View</button>
-                          {!b.is_paid && <button className="btn btn-sm" style={{ color: 'var(--green)', borderColor: 'var(--green)', fontSize: 11 }} onClick={() => handleMarkPaid(b.id)} disabled={markingPaidId === b.id}>{markingPaidId === b.id ? '…' : '✅ Mark Paid'}</button>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>  
-                </table>
-              </div>
-            </>
-          )}
+                <div style={{ marginBottom: 12, display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <input
+                    value={purSearch}
+                    onChange={e => setPurSearch(e.target.value)}
+                    placeholder="🔍  Search by bill number or vendor name…"
+                    style={{ maxWidth: 340 }}
+                  />
+                  {q && purAllLoading && <span style={{ fontSize: 12, color: 'var(--text3)' }}>Loading all bills…</span>}
+                  {q && !purAllLoading && (
+                    <span style={{ fontSize: 12, color: 'var(--text3)' }}>
+                      {filteredPurBills.length} result{filteredPurBills.length !== 1 ? 's' : ''} (all time)
+                    </span>
+                  )}
+                  {q && (
+                    <button className="btn btn-secondary btn-sm" onClick={() => setPurSearch('')}>✕ Clear</button>
+                  )}
+                </div>
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <table>
+                    <thead><tr><th>PO Number</th><th>Date</th><th>Vendor</th><th>Total</th><th>Payment</th><th></th></tr></thead>
+                    <tbody>
+                      {filteredPurBills.map((b, i) => (
+                        <tr key={i}>
+                          <td><span className="badge badge-orange" style={{ fontFamily: 'var(--mono)' }}>{b.purchase_number}</span></td>
+                          <td style={{ fontSize: 12, color: 'var(--text3)' }}>{new Date(b.date).toLocaleDateString()}</td>
+                          <td style={{ fontWeight: 600 }}>{b.vendor_name}</td>
+                          <td style={{ fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{fmt(b.total_value)}</td>
+                          <td><span className={`badge ${b.is_paid ? 'badge-green' : 'badge-red'}`}>{b.is_paid ? '✅ Paid' : '🔴 Not Paid'}</span></td>
+                          <td style={{ display: 'flex', gap: 6 }}>
+                            <button className="btn btn-secondary btn-sm" onClick={() => setDetailBillId(b.id)}>View</button>
+                            {!b.is_paid && <button className="btn btn-sm" style={{ color: 'var(--green)', borderColor: 'var(--green)', fontSize: 11 }} onClick={() => handleMarkPaid(b.id)} disabled={markingPaidId === b.id}>{markingPaidId === b.id ? '…' : '✅ Mark Paid'}</button>}
+                          </td>
+                        </tr>
+                      ))}
+                      {!purAllLoading && filteredPurBills.length === 0 && q && (
+                        <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text3)', padding: 24 }}>No bills match "{purSearch}"</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            );
+          })()}
 
           {/* ── Sales Tax — with filter dropdown ── */}
           {tab === 'salestax' && (() => {

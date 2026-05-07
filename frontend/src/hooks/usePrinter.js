@@ -40,7 +40,7 @@ export function usePrinter() {
       const pageSize = pageSizeOverride || { width: 80000, height: 2000000 };
       await window.electronAPI.silentPrint(html, printerName, {
         pageSize,
-        margins: { marginType: 'none' },
+        margins: { marginType: 'printableArea' },
         scaleFactor: 100,
         printBackground: true,
       });

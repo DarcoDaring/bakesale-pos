@@ -183,6 +183,9 @@ class PurchaseBillSerializer(serializers.ModelSerializer):
                         break
 
                 new_pp = Decimal(str(item_data.get('purchase_price', 0) or 0))
+                if purchase_unit == 'case':
+                    sq = Decimal(str(float(selling_qty))) if selling_qty and float(selling_qty) > 0 else Decimal('1')
+                    new_pp = (new_pp / sq).quantize(Decimal('0.0001'))
                 if existing_batch:
                     old_qty = Decimal(str(existing_batch.quantity))
                     old_pp  = Decimal(str(existing_batch.purchase_price or 0))

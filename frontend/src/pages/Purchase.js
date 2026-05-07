@@ -11,6 +11,7 @@ const UNITS = ['nos', 'kg', 'case'];
 const fmt   = n => `₹${parseFloat(n || 0).toFixed(2)}`;
 
 const BARCODE_SETTINGS_KEY = 'barcode_print_settings';
+const DRAFT_KEY = 'purchase_draft';
 const loadBarcodeSettings = () => {
   try { return JSON.parse(localStorage.getItem(BARCODE_SETTINGS_KEY) || '{}'); }
   catch { return {}; }
@@ -1068,13 +1069,55 @@ function PurchaseReturnModal({ onClose }) {
   );
 }
 
+// ─── QuickCreateProductModal ──────────────────────────────────────────────────
+function QuickCreateProductModal({ barcode, onCreated, onClose }) {
+  const [name,  setName]  = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleCreate = async () => {
+    if (!name.trim()) { toast.error('Enter product name'); return; }
+    setSaving(true);
+    try {
+      const { data } = await createProduct({ name: name.trim(), barcode: barcode || '' });
+      toast.success(`"${data.name}" created`);
+      onCreated(data);
+    } catch (e) {
+      toast.error(e?.response?.data?.barcode?.[0] || 'Failed to create product');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 24, width: 320, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}
+        onMouseDown={e => e.stopPropagation()}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Item Not Found</div>
+        <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 16 }}>
+          Barcode <span style={{ fontFamily: 'var(--mono)', color: 'var(--accent)' }}>{barcode}</span>
+        </div>
+        <input autoFocus placeholder="Product name *" value={name} onChange={e => setName(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') onClose(); }}
+          style={{ fontSize: 13, padding: '8px 10px', width: '100%', marginBottom: 12 }} />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }}
+            onClick={handleCreate} disabled={saving}>
+            {saving ? 'Creating…' : 'Create & Add'}
+          </button>
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── ProductSearchCell ────────────────────────────────────────────────────────
 function ProductSearchCell({ value, onSelect, onEnterNext, excludeProductIds = [] }) {
-  const [query,    setQuery]    = useState(value?.name || '');
-  const [results,  setResults]  = useState([]);
-  const [searching,setSearching]= useState(false);
-  const [hiIdx,    setHiIdx]    = useState(0);
-  const [open,     setOpen]     = useState(false);
+  const [query,       setQuery]       = useState(value?.name || '');
+  const [results,     setResults]     = useState([]);
+  const [searching,   setSearching]   = useState(false);
+  const [hiIdx,       setHiIdx]       = useState(0);
+  const [open,        setOpen]        = useState(false);
+  const [quickCreate, setQuickCreate] = useState(null);
   const wrapRef = useRef(); const debounceRef = useRef(); const resultsRef = useRef([]);
   resultsRef.current = results;
 
@@ -1120,8 +1163,8 @@ function ProductSearchCell({ value, onSelect, onEnterNext, excludeProductIds = [
         const filtered = rows.filter(p => !excludeProductIds.includes(p.id));
         if (filtered.length > 0) pick(filtered[0]);
         else if (rows.length > 0) toast.error('Product already added in this purchase');
-        else toast.error('Product not found');
-      } catch { toast.error('Product not found'); }
+        else setQuickCreate(q);
+      } catch { setQuickCreate(q); }
     }
   };
 
@@ -1170,6 +1213,13 @@ function ProductSearchCell({ value, onSelect, onEnterNext, excludeProductIds = [
           </div>
         </div>
       )}
+      {quickCreate !== null && (
+        <QuickCreateProductModal
+          barcode={quickCreate}
+          onCreated={p => { setQuickCreate(null); setQuery(p.name); pick(p); }}
+          onClose={() => { setQuickCreate(null); setQuery(''); }}
+        />
+      )}
     </div>
   );
 }
@@ -1195,8 +1245,11 @@ export default function Purchase() {
   const [roundOff, setRoundOff] = useState('');
   const [billDate, setBillDate] = useState(() => new Date().toISOString().split('T')[0]);
 
+  const [lastAutoSaved, setLastAutoSaved] = useState(null);
+
   const cellRefs          = useRef({});
   const mrpJustBlurredRef = useRef(null);
+  const autoSaveTimerRef  = useRef(null);
   const dateRef   = useRef();
   const vendorRef = useRef();
   const registerRef = (rowId, col, el) => {
@@ -1222,10 +1275,46 @@ export default function Purchase() {
   };
 
   const handleClear = useCallback(() => {
-  setRows([emptyRow()]); setSelectedVendor(''); setIsPaid(false);
-  setRoundOff('');
-  refreshPurchaseNumber(); refreshVendors();
-}, []);
+    setRows([emptyRow()]); setSelectedVendor(''); setIsPaid(false);
+    setRoundOff(''); setBillDate(new Date().toISOString().split('T')[0]);
+    refreshPurchaseNumber(); refreshVendors();
+    setTimeout(() => dateRef.current?.focus(), 80);
+  }, []);
+
+  const saveDraft = useCallback(() => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ rows, selectedVendor, isPaid, roundOff, billDate }));
+      toast.success('Draft saved');
+    } catch { toast.error('Failed to save draft'); }
+  }, [rows, selectedVendor, isPaid, roundOff, billDate]);
+
+  const loadDraft = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) { toast.error('No draft saved'); return; }
+      const draft = JSON.parse(raw);
+      if (draft.rows?.length)          setRows(draft.rows.map(r => ({ ...r, _id: Date.now() + Math.random() })));
+      if (draft.selectedVendor != null) setSelectedVendor(draft.selectedVendor);
+      if (draft.isPaid != null)         setIsPaid(draft.isPaid);
+      if (draft.roundOff != null)       setRoundOff(draft.roundOff);
+      if (draft.billDate)               setBillDate(draft.billDate);
+      toast.success('Draft loaded');
+    } catch { toast.error('Failed to load draft'); }
+  }, []);
+
+  // Auto-save draft 2 seconds after any meaningful change
+  useEffect(() => {
+    const hasContent = selectedVendor || rows.some(r => r.product);
+    if (!hasContent) return;
+    clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ rows, selectedVendor, isPaid, roundOff, billDate }));
+        setLastAutoSaved(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
+      } catch {}
+    }, 2000);
+    return () => clearTimeout(autoSaveTimerRef.current);
+  }, [rows, selectedVendor, isPaid, roundOff, billDate]);
 
   useEffect(() => {
     const handleKey = e => {
@@ -1590,7 +1679,14 @@ export default function Purchase() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
+        
+        <button className="btn btn-secondary" onClick={loadDraft} style={{ padding: '12px 20px', fontSize: 14 }}>
+          📂 Load Draft
+        </button>
+        <button className="btn btn-secondary" onClick={saveDraft} style={{ padding: '12px 20px', fontSize: 14, color: 'var(--blue)', borderColor: 'var(--blue)' }}>
+          💾 Save Draft
+        </button>
         <button className="btn btn-primary" onClick={handleSubmit} disabled={loading} style={{ padding: '12px 32px', fontSize: 15 }}>
           {loading ? 'Saving…' : 'Confirm'}
           <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(255,255,255,0.2)', borderRadius: 4, padding: '2px 7px', marginLeft: 10, fontFamily: 'monospace' }}>F1</span>
@@ -1598,7 +1694,7 @@ export default function Purchase() {
       </div>
 
       {showProduct   && <ProductMasterModal  onClose={() => setShowProduct(false)} />}
-      {showVendor    && <VendorMasterModal   onClose={() => setShowVendor(false)} />}
+      {showVendor    && <VendorMasterModal   onClose={() => { setShowVendor(false); refreshVendors(); }} />}
       {showPurReturn && <PurchaseReturnModal onClose={() => setShowPurReturn(false)} />}
     </div>
   );

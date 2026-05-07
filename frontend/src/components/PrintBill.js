@@ -23,74 +23,104 @@ export default function PrintBill({ bill, onClose }) {
     });
 
     const fmtRs = n => `Rs.${parseFloat(n || 0).toFixed(2)}`;
+    const sep = `<hr style="border:none;border-top:1px dashed #000;margin:5px 0">`;
 
-    const infoRows = [
-      ['Bill No',  bill.bill_number,  true],
-      ['Date',     new Date(bill.created_at).toLocaleDateString('en-IN'),  false],
-      ['Time',     new Date(bill.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),  false],
-      ['Payment',  payLabel[bill.payment_type] || bill.payment_type,  false],
-      ...(bill.created_by_username ? [['Cashier', bill.created_by_username, false]] : []),
-    ];
+    const infoHtml = [
+      ['Bill No',  bill.bill_number,  700],
+      ['Date',     new Date(bill.created_at).toLocaleDateString('en-IN'),  400],
+      ['Time',     new Date(bill.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),  400],
+      ['Payment',  payLabel[bill.payment_type] || bill.payment_type,  400],
+      ...(bill.created_by_username ? [['Cashier', bill.created_by_username, 400]] : []),
+    ].map(([l, v, w]) =>
+      `<tr>
+        <td style="padding:2px 0;font-size:12px">${l}</td>
+        <td style="padding:2px 0;font-size:12px;text-align:right;font-weight:${w}">${v}</td>
+      </tr>`
+    ).join('');
 
-    const itemsHtml = items.map(item => {
-      const qty      = parseFloat(item.quantity || 0);
-      const price    = parseFloat(item.price    || 0);
-      const subtotal = qty * price;
-      return `<div style="display:grid;grid-template-columns:1fr 44px 80px;gap:6px;font-size:12px;margin-bottom:5px;align-items:start">
-        <span style="font-weight:600;word-break:break-word;line-height:1.3">${item.product_name || ''}</span>
-        <span style="text-align:center;color:#444">${qty % 1 === 0 ? qty : qty.toFixed(3)}</span>
-        <span style="text-align:right;font-weight:600">${fmtRs(subtotal)}</span>
-      </div>`;
+    const itemRows = items.map(item => {
+      const qty = parseFloat(item.quantity || 0);
+      const sub = qty * parseFloat(item.price || 0);
+      return `<tr>
+        <td style="padding:3px 0;font-size:12px;word-break:break-word;vertical-align:top">${item.product_name || ''}</td>
+        <td style="padding:3px 2px;font-size:12px;text-align:center;white-space:nowrap;vertical-align:top">${qty % 1 === 0 ? qty : qty.toFixed(3)}</td>
+        <td style="padding:3px 0;font-size:12px;text-align:right;white-space:nowrap;vertical-align:top">${fmtRs(sub)}</td>
+      </tr>`;
     }).join('');
 
-    const taxHtml = totalTax > 0 ? `
-      <div style="font-size:12px;margin-bottom:4px">
-        ${[['Taxable Amount', fmtRs(total - totalTax)], ['CGST', fmtRs(totalTax / 2)], ['SGST', fmtRs(totalTax / 2)]]
-          .map(([l, v]) => `<div style="display:flex;justify-content:space-between"><span>${l}</span><span>${v}</span></div>`).join('')}
-      </div>
-      <div style="border-top:1px dashed #999;margin:6px 0"></div>
-      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:12px;margin-bottom:4px">
-        <span>Total Tax</span><span>${fmtRs(totalTax)}</span>
-      </div>
-      <div style="border-top:1px dashed #999;margin:6px 0"></div>` : '';
+    const taxSection = totalTax > 0 ? `
+      ${sep}
+      <table width="100%" style="border-collapse:collapse;font-size:12px;font-weight:700">
+        <tr><td style="padding:2px 0">Taxable Amount</td><td style="padding:2px 0;text-align:right">${fmtRs(total - totalTax)}</td></tr>
+        <tr><td style="padding:2px 0">CGST</td><td style="padding:2px 0;text-align:right">${fmtRs(totalTax / 2)}</td></tr>
+        <tr><td style="padding:2px 0">SGST</td><td style="padding:2px 0;text-align:right">${fmtRs(totalTax / 2)}</td></tr>
+      </table>
+      ${sep}
+      <table width="100%" style="border-collapse:collapse;font-size:12px;font-weight:900">
+        <tr><td style="padding:2px 0">Total Tax</td><td style="padding:2px 0;text-align:right">${fmtRs(totalTax)}</td></tr>
+      </table>` : '';
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+* { margin:0; padding:0; box-sizing:border-box; }
 @page { size: 80mm auto; margin: 0; }
-html, body { margin: 0; padding: 2mm 3mm; width: 74mm; box-sizing: border-box;
+html, body {
+  width: 100%;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 13px; font-weight: 700; color: #000; background: #fff;
-  line-height: 1.6; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  font-size: 13px;
+  font-weight: 700;
+  color: #000;
+  background: #fff;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+body { padding: 2mm 1mm; }
+table { width:100%; border-collapse:collapse; font-family:inherit; }
 </style></head><body>
-  <div style="text-align:center;margin-bottom:10px">
-    <div style="font-size:22px;font-weight:900;letter-spacing:2px">ALTHAHANI</div>
-    <div style="font-size:9px;color:#555;margin-top:2px">
-      GST IN: 27AAACB7450P1ZV<br>FSSAI: 10012022000234<br>MOB: 8921201010
-    </div>
+
+<div style="text-align:center;margin-bottom:6px">
+  <div style="font-size:22px;font-weight:900;letter-spacing:2px">ALTHAHANI</div>
+  <div style="font-size:9px;font-weight:400;line-height:1.7;margin-top:3px">
+    GST IN: 27AAACB7450P1ZV<br>FSSAI: 10012022000234<br>MOB: 8921201010
   </div>
-  <div style="border-top:1px dashed #999;margin:6px 0"></div>
-  <div style="font-size:12px;margin-bottom:6px">
-    ${infoRows.map(([l, v, bold]) =>
-      `<div style="display:flex;justify-content:space-between">
-        <span>${l}</span>
-        <span style="font-weight:${bold ? '700' : '400'}">${v}</span>
-      </div>`).join('')}
-  </div>
-  <div style="border-top:1px dashed #999;margin:6px 0"></div>
-  <div style="display:grid;grid-template-columns:1fr 44px 80px;gap:6px;font-size:11px;font-weight:700;margin-bottom:4px">
-    <span>Item</span>
-    <span style="text-align:center">Qty</span>
-    <span style="text-align:right">Amount</span>
-  </div>
-  <div style="border-top:1px dashed #999;margin:4px 0 6px"></div>
-  ${itemsHtml}
-  <div style="border-top:1px dashed #999;margin:6px 0"></div>
-  ${taxHtml}
-  <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:900;margin-top:4px">
-    <span>TOTAL</span><span>${fmtRs(total)}</span>
-  </div>
-  <div style="border-top:1px dashed #999;margin:10px 0 6px"></div>
-  <div style="text-align:center;font-size:11px;color:#888">Items sold are non-returnable</div>
-  <br><br><br>
+</div>
+
+${sep}
+
+<table>
+  <colgroup><col style="width:48%"><col style="width:52%"></colgroup>
+  <tbody>${infoHtml}</tbody>
+</table>
+
+${sep}
+
+<table style="font-size:11px;font-weight:700">
+  <colgroup><col style="width:55%"><col style="width:15%"><col style="width:30%"></colgroup>
+  <thead>
+    <tr>
+      <th style="text-align:left;padding-bottom:4px">Item</th>
+      <th style="text-align:center;padding-bottom:4px">Qty</th>
+      <th style="text-align:right;padding-bottom:4px">Amount</th>
+    </tr>
+    <tr><th colspan="3" style="border-top:1px dashed #000;padding:2px 0 0"></th></tr>
+  </thead>
+  <tbody>${itemRows}</tbody>
+</table>
+
+${taxSection}
+
+${sep}
+
+<table style="font-weight:900">
+  <tr>
+    <td style="font-size:16px">TOTAL</td>
+    <td style="font-size:16px;text-align:right">${fmtRs(total)}</td>
+  </tr>
+</table>
+
+${sep}
+
+<p style="text-align:center;font-size:10px;font-weight:400;margin-top:3px">Items sold are non-returnable</p>
+<br><br>
 </body></html>`;
 
     printBill(html, { width: 80000, height: 2000000 });
