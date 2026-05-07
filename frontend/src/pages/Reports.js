@@ -1595,9 +1595,7 @@ export default function Reports() {
                 return (
                   <div>
                     {/* GST note */}
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 6, padding: '5px 10px', marginBottom: 14, fontSize: 12, color: 'var(--accent)' }}>
-                      ℹ️ All amounts are <b style={{ marginLeft: 3 }}>excluding GST</b>. Revenue is shown at base price (MRP ÷ (1 + GST%)). COGS is purchase price (ex-tax). GST is a pass-through — collected from customer, remitted to government.
-                    </div>
+                    
                     {/* Summary cards */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 20 }}>
                       <div className="stat-card">
